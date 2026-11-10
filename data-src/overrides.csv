@@ -1,0 +1,2 @@
+layer,objectid,field,value,reason
+60,2753,rules,1-5+7@09:00-20:00;6@09:00-16:00,GIS says "Sun to Fri & Sat / 9 am to 8 pm & 4 pm to 8 pm"; TRO Zone Y Part 4.3 = Mon-Sun 9am-8pm except 9am-4pm on any Saturday

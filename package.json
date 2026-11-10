@@ -1,0 +1,15 @@
+{
+  "name": "bh-parking-finder",
+  "private": true,
+  "type": "module",
+  "description": "B&H Parking Finder: personal on-street parking status for Brighton & Hove",
+  "scripts": {
+    "fetch": "node scripts/fetch.mjs",
+    "normalise": "node scripts/normalise.mjs",
+    "publish-data": "node scripts/validate.mjs --publish",
+    "data": "node scripts/fetch.mjs && node scripts/normalise.mjs && node scripts/validate.mjs --publish",
+    "test": "node --test \"test/*.test.mjs\"",
+    "serve": "node scripts/serve.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

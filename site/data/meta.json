@@ -1,0 +1,83 @@
+{
+ "generated": "2026-11-10T14:36:15.884Z",
+ "hash": "989604b2236da0ce",
+ "layers": {
+  "0": {
+   "key": "red",
+   "count": 35,
+   "kept": 35,
+   "emptyGeometry": 0,
+   "nullGeometry": 0,
+   "unknown": 0,
+   "unknownReasons": {},
+   "lastEditDate": null
+  },
+  "1": {
+   "key": "dy",
+   "count": 12158,
+   "kept": 12027,
+   "emptyGeometry": 130,
+   "nullGeometry": 1,
+   "unknown": 0,
+   "unknownReasons": {},
+   "lastEditDate": null
+  },
+  "39": {
+   "key": "sy",
+   "count": 270,
+   "kept": 270,
+   "emptyGeometry": 0,
+   "nullGeometry": 0,
+   "unknown": 125,
+   "unknownReasons": {
+    "all-NA": 54,
+    "shifted-columns": 68,
+    "no-days": 3
+   },
+   "lastEditDate": null
+  },
+  "53": {
+   "key": "limited",
+   "count": 179,
+   "kept": 179,
+   "emptyGeometry": 0,
+   "nullGeometry": 0,
+   "unknown": 0,
+   "unknownReasons": {},
+   "lastEditDate": null
+  },
+  "57": {
+   "key": "paid",
+   "count": 147,
+   "kept": 147,
+   "emptyGeometry": 0,
+   "nullGeometry": 0,
+   "unknown": 1,
+   "unknownReasons": {
+    "missing": 1
+   },
+   "lastEditDate": null
+  },
+  "60": {
+   "key": "permit",
+   "count": 5464,
+   "kept": 5462,
+   "emptyGeometry": 2,
+   "nullGeometry": 0,
+   "unknown": 0,
+   "unknownReasons": {},
+   "lastEditDate": null
+  },
+  "62": {
+   "key": "shared",
+   "count": 2143,
+   "kept": 2143,
+   "emptyGeometry": 0,
+   "nullGeometry": 0,
+   "unknown": 0,
+   "unknownReasons": {},
+   "lastEditDate": null
+  }
+ },
+ "rulesets": 36
+}

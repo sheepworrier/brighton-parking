@@ -1,0 +1,16 @@
+{
+  "_note": "Exact-match fixes applied AFTER lowercasing/whitespace-collapsing. Key = cleaned raw string, value = corrected string. Verified against TRO schedules where noted.",
+  "days": {
+    "mon toi sun": "mon to sun"
+  },
+  "times": {
+    "10 am t 11 am & 7 pm to 8 pm": "10 am to 11 am & 7 pm to 8 pm",
+    "11 am noon & 6 pm to 7 pm": "11 am to noon & 6 pm to 7 pm",
+    "11 a to noon & 6 pm to 7 pm": "11 am to noon & 6 pm to 7 pm",
+    "10 am to 11 am & 7 pm & 8 pm": "10 am to 11 am & 7 pm to 8 pm",
+    "am to 11 am & 7 pm to 8 pm": "10 am to 11 am & 7 pm to 8 pm",
+    "9 amto 8 pm": "9 am to 8 pm",
+    "9 am, to 8 pm": "9 am to 8 pm",
+    "10 an to 2 pm & 5 pm to 11 pm": "10 am to 2 pm & 5 pm to 11 pm"
+  }
+}
