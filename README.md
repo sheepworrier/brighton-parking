@@ -8,6 +8,10 @@ Personal project, no accounts, installable as a PWA. See [PLAN.md](PLAN.md) for 
 
 - `scripts/fetch.mjs` pages every layer from the council FeatureServer into `.cache/raw` as GeoJSON in **native British National Grid metres** (the server's own WGS84 output skips the datum shift and is ~130 m out).
 - `scripts/normalise.mjs` parses the free-text Days/Times into compact rules (`[dayMask, fromMin, toMin]`), applies `data-src/typos.json` and `data-src/overrides.csv`, converts BNG to WGS84 (`scripts/lib/bng.mjs`), rounds and simplifies geometry, and writes `.cache/out`.
+- `scripts/osm-roads.mjs` fetches named OpenStreetMap roads (Overpass, in tiles). `normalise` snaps each bay to the nearest road for its street name, and slides the bays over the roads as an **alignment check**; `validate` fails if they look shifted more than 6 m (this is what would have caught the 130 m datum bug).
+- `data-src/zones.csv` (built by `scripts/tro-zones.mjs` from the TRO Schedule 1 PDFs; needs `pdftotext`) is the legal hours per zone. `normalise` prints warnings where the GIS hours differ; these are prompts to look, not failures.
+- `scripts/tro-watch.mjs` (weekly workflow) opens an issue when new TRO amendment documents appear.
+- Double yellows are published as 0.02-degree tiles in `site/data/dy/` and loaded for the area in view.
 - `scripts/validate.mjs` refuses to publish if anything is unparseable, a layer shrinks >10%, a layer is empty or has too many unknown-hours features. Otherwise it copies to `site/data`.
 - `site/engine.js` is a pure status engine (Europe/London time, BST aware). `site/app.js` is the UI (MapLibre, bottom sheet).
 - A weekly GitHub Action refreshes the data; a failure opens an issue and leaves the live data untouched.
@@ -16,6 +20,7 @@ Personal project, no accounts, installable as a PWA. See [PLAN.md](PLAN.md) for 
 
 ```sh
 npm test            # parser, engine and geometry tests
+node scripts/osm-roads.mjs   # once, before the data step (names + alignment check)
 npm run data        # fetch + normalise + validate + publish to site/data
 npm run serve       # http://localhost:8080
 ```

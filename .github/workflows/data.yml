@@ -31,10 +31,27 @@ jobs:
       - name: Fetch from council
         run: node scripts/fetch.mjs
 
+      # OpenStreetMap roads give street names and the alignment check. Overpass is flaky, so keep the last
+      # good extract in the Actions cache and carry on with it if today's fetch fails.
+      - name: Restore last OSM extract
+        uses: actions/cache@v4
+        with:
+          path: .cache/osm-roads.json
+          key: osm-roads-${{ github.run_id }}
+          restore-keys: osm-roads-
+
+      - name: Fetch OSM roads
+        continue-on-error: true
+        run: node scripts/osm-roads.mjs
+
       - name: Normalise
+        env:
+          REQUIRE_OSM: '1'
         run: node scripts/normalise.mjs
 
       - name: Validate and publish to site/data
+        env:
+          REQUIRE_OSM: '1'
         run: node scripts/validate.mjs --publish
 
       - name: Commit if changed
@@ -59,7 +76,7 @@ jobs:
 
           Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-          Usual causes: a new unparseable Days/Times string (add it to data-src/typos.json or data-src/overrides.csv), a layer losing >10% of its features, or the council server being down."
+          Usual causes: bays drifting off the OSM roads (a coordinate/datum problem), a new unparseable Days/Times string (add it to data-src/typos.json or data-src/overrides.csv), a layer losing >10% of its features, or the council server being down."
           existing=$(gh issue list --label data-failure --state open --json number -q '.[0].number')
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body "$body"

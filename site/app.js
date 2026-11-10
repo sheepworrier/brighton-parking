@@ -25,6 +25,8 @@ const LIST_SOURCES = ['paid', 'shared', 'permit', 'limited', 'sy'];
 
 const state = {
   rulesets: null,
+  meta: null,
+  streets: [],              // interned street names; features carry an index in `s`
   data: {},                 // key -> Promise<FeatureCollection>
   loaded: {},               // key -> FeatureCollection
   when: null,               // Date | null (null = now)
@@ -63,7 +65,9 @@ function loadData(key) {
   return state.data[key];
 }
 const rulesReady = fetch('data/rules.json').then((r) => r.json()).then((r) => (state.rulesets = r));
-fetch('data/meta.json').then((r) => r.json()).then((m) => {
+const metaReady = fetch('data/meta.json').then((r) => r.json()).then((m) => { state.meta = m; return m; });
+const streetsReady = fetch('data/streets.json').then((r) => r.json()).then((s) => (state.streets = s)).catch(() => (state.streets = []));
+metaReady.then((m) => {
   const d = new Date(m.generated);
   $('#dataDate').textContent = `Data refreshed ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: TZ })}.`;
 }).catch(() => {});
@@ -94,14 +98,41 @@ const LAYER_SPECS = [
   { id: 'shared-fill', cat: 'pay', source: 'shared', type: 'fill', minzoom: 13.5, paint: { 'fill-color': tariffColor, 'fill-opacity': 0.95 } },
   { id: 'shared-line', cat: 'pay', source: 'shared', type: 'line', minzoom: 13.5, paint: { 'line-color': tariffColor, 'line-width': zoomW(2.2, 3.4, 4.5) } },
   { id: 'paid-fill', cat: 'pay', source: 'paid', type: 'fill', minzoom: 13.5, paint: { 'fill-color': tariffColor, 'fill-opacity': 0.95 } },
+  { id: 'shared-tl', cat: 'pay', source: 'shared', type: 'symbol', minzoom: 17, layout: { 'text-field': ['get', 't'], 'text-font': ['Noto Sans Bold'], 'text-size': 12 }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#222', 'text-halo-width': 1.2 } },
+  { id: 'paid-tl', cat: 'pay', source: 'paid', type: 'symbol', minzoom: 17, layout: { 'text-field': ['get', 't'], 'text-font': ['Noto Sans Bold'], 'text-size': 12 }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#222', 'text-halo-width': 1.2 } },
   { id: 'paid-line', cat: 'pay', source: 'paid', type: 'line', minzoom: 13.5, paint: { 'line-color': tariffColor, 'line-width': zoomW(2.2, 3.4, 4.5) } },
   { id: 'sy-line', cat: 'sy', source: 'sy', type: 'line', minzoom: 14, paint: { 'line-color': '#e0b000', 'line-width': zoomW(2, 3.5, 5), 'line-dasharray': [2, 1] } },
 ];
 const mapReady = new Promise((res) => map.on('load', res));
 
+// Double yellows come as small tiles for the area in view (the full set is ~3 MB).
+const dyTiles = new Map();   // cell key -> features
+let dyBusy = false;
+async function loadDyTiles() {
+  if (!state.cats.dy || dyBusy || !map.getSource('dy')) return;
+  const meta = await metaReady;
+  if (!meta.dyTiles || map.getZoom() < 14.5) return;
+  const T = meta.dyTiles.size, have = new Set(meta.dyTiles.cells), b = map.getBounds();
+  const want = [];
+  for (let x = Math.floor(b.getWest() / T) - 1; x <= Math.floor(b.getEast() / T) + 1; x++)
+    for (let y = Math.floor(b.getSouth() / T) - 1; y <= Math.floor(b.getNorth() / T) + 1; y++) {
+      const k = `${x}_${y}`;
+      if (have.has(k) && !dyTiles.has(k)) want.push(k);
+    }
+  if (!want.length) return;
+  dyBusy = true;
+  try {
+    await Promise.all(want.map((k) => fetch(`data/dy/${k}.geojson`).then((r) => r.json()).then((g) => dyTiles.set(k, g.features)).catch(() => {})));
+    map.getSource('dy')?.setData({ type: 'FeatureCollection', features: [...dyTiles.values()].flat() });
+  } finally { dyBusy = false; }
+  loadDyTiles();   // the view may have moved while we were fetching
+}
+map.on('moveend', loadDyTiles);
+
 function addSource(key) {
   if (map.getSource(key)) return;
   map.addSource(key, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  if (key === 'dy') { loadDyTiles(); return; }
   loadData(key).then((g) => map.getSource(key)?.setData(g)).catch((e) => console.error(e));
 }
 
@@ -114,8 +145,8 @@ async function applyCat(cat) {
       if (spec.cat !== cat || map.getLayer(spec.id)) return;
       addSource(spec.source);
       const before = LAYER_SPECS.slice(i + 1).find((s) => map.getLayer(s.id))?.id ?? 'hl-glow';
-      const { id, source, type, minzoom, paint } = spec;
-      map.addLayer({ id, source, type, minzoom, paint, ...(type === 'line' ? { layout: { 'line-join': 'round' } } : {}) }, before);
+      const { id, source, type, minzoom, paint, layout } = spec;
+      map.addLayer({ id, source, type, minzoom, paint, ...(layout ? { layout } : type === 'line' ? { layout: { 'line-join': 'round' } } : {}) }, before);
     });
   }
   for (const spec of LAYER_SPECS) if (spec.cat === cat && map.getLayer(spec.id)) map.setLayoutProperty(spec.id, 'visibility', on ? 'visible' : 'none');
@@ -124,7 +155,7 @@ async function applyCat(cat) {
   chip?.setAttribute('aria-pressed', String(on));
   document.querySelectorAll(`.cathead[data-cat="${cat}"] .cb`).forEach((n) => (n.textContent = on ? 'Hide on map' : 'Show all on map'));
 }
-function setCat(cat, on) { state.cats[cat] = on; writeHashSoon(); return applyCat(cat); }
+function setCat(cat, on) { state.cats[cat] = on; writeHashSoon(); return applyCat(cat).then(() => { if (cat === 'dy' && on) loadDyTiles(); }); }
 
 map.on('load', () => {
   map.addSource('hl', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -135,7 +166,7 @@ map.on('load', () => {
 
 map.on('click', (e) => {
   const pad = 9;
-  const layers = LAYER_SPECS.map((s) => s.id).filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
+  const layers = LAYER_SPECS.filter((s) => s.type !== 'symbol').map((s) => s.id).filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
   if (!layers.length) return;
   const hits = map.queryRenderedFeatures([[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]], { layers });
   if (!hits.length) return;
@@ -164,6 +195,7 @@ async function showPopup(p, lngLat) {
   await rulesReady;
   const { text } = evalProps(p);
   const rows = [];
+  if (p.s != null && state.streets[p.s]) rows.push(['Street', state.streets[p.s]]);
   if (p.z) rows.push(['Zone', p.z]);
   if (p.t) rows.push(['Tariff', TARIFF_NAME[p.t]]);
   if (p.ms != null) rows.push(['Max stay', fmtDuration(p.ms)]);
@@ -180,7 +212,7 @@ async function showPopup(p, lngLat) {
 }
 
 // ---------- nearby list ----------
-const clusterKey = (f) => { const p = f.properties; return [KIND_CAT[p.k] === 'pay' ? 'pay' : p.k, p.z, p.r, p.t, p.ms, p.nr].join('|'); };
+const clusterKey = (f) => { const p = f.properties; return [KIND_CAT[p.k] === 'pay' ? 'pay' : p.k, p.z, p.r, p.t, p.ms, p.nr, p.s].join('|'); };
 const clearList = () => $('#results').querySelectorAll('.row, .note, .count, .pick, .hint, .sect').forEach((n) => n.remove());
 const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
 
@@ -190,6 +222,7 @@ async function refresh() {
   clearList();
   $('#results').prepend(el('p', 'note', 'Loading bays…'));
   await rulesReady;
+  await streetsReady;
   await Promise.all(LIST_SOURCES.map(loadData));
   if (seq !== state.seq) return;
   clearList();
@@ -283,6 +316,8 @@ function rowEl({ c, p, ev }, mode) {
   } else {
     title = KIND_LABEL[p.k] || p.k;
   }
+  const street = p.s != null ? state.streets[p.s] : null;
+  if (street) title = `${street} · ${title}`;
   if (p.z) title += ` · Zone ${p.z}`;
   const text = mode === 'pay' ? describeStatus(p.k, ev, when, { rel: true }) : optionText(p, ev, when);
   const meta = [];
@@ -501,4 +536,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 // test hook for automation (harmless in production)
-window.__bhpf = { state, setOrigin, setWhen, refresh, map, setCat };
+window.__bhpf = { state, loadDyTiles, setOrigin, setWhen, refresh, map, setCat };

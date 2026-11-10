@@ -201,6 +201,19 @@ Node 20 scripts, no deps beyond `simplify-geojson`-style tiny helper (Douglas–
 
 
 ## Phase 2 status (2026-11-10)
-- Done: stay-length filter (chip + `s=` share param, hides paid/limited bays with max stay shorter than planned); weekly TRO watch (`scripts/tro-watch.mjs`, `.github/workflows/tro-watch.yml`, baseline `data-src/tro-seen.json`, opens a `tro-change` issue).
-- Event days: covered by the persistent "Check the signs" banner; no dates yet (Phase 5).
-- Still to do: street names (OSM snap or TRO street lists), CI alignment check vs OSM, `zones.csv` cross-check, tiling of double yellows, tariff letters on the map.
+- **Stay-length filter:** chip + `s=` share param; hides paid/limited bays whose max stay is shorter than the planned stay.
+- **Weekly TRO watch:** `scripts/tro-watch.mjs`, `.github/workflows/tro-watch.yml`, baseline `data-src/tro-seen.json`; opens a `tro-change` issue.
+- **Street names:** `scripts/osm-roads.mjs` fetches named OSM roads (tiled Overpass, several mirrors; Actions-cached as a fallback); `normalise` snaps each bay midpoint to the nearest named road within 30 m (`s` = index into `site/data/streets.json`). Rows now read "Street · tariff · Zone".
+- **Alignment check:** same OSM data; `normalise` slides sampled bay vertices over the roads, `validate` fails if the best shift exceeds 6 m or fewer than 40% of vertices lie within 4 m of a road. Would have caught the 130 m datum bug.
+- **zones.csv cross-check:** `scripts/tro-zones.mjs` builds `data-src/zones.csv` from the 27 zone Schedule 1 PDFs (headings parsed by `scripts/lib/tro.mjs`; exceptions and unreadable headings are skipped, never guessed). `normalise` warns where GIS hours differ from the TRO. First run found 6 differences (see findings below).
+- **Double-yellow tiling:** `site/data/dy/<x>_<y>.geojson` (0.02-degree cells), loaded for the viewport (+1 cell margin) at zoom >= 14.5. Replaces the 3 MB `dy.geojson`.
+- **Tariff letters** (L/M/H/HS) drawn on paid and shared bays from zoom 17, so the map isn't colour-only.
+- **Event days:** still only the "Check the signs" banner (dates are Phase 5).
+
+### Phase 2 findings: GIS vs TRO hours (warnings, not yet acted on)
+- limited N: GIS Mon-Sat 08:00-18:00, TRO says Mon-Sun.
+- paid zone 10: GIS Mon-Sun 09:00-20:00, TRO says Mon-Fri.
+- permit R and H: GIS 09:00-18:00, TRO says 09:00-20:00.
+- shared R: GIS Mon-Sat 09:00-20:00, TRO says Mon-Sun.
+- shared M: GIS 09:00-21:00, TRO says 09:00-20:00.
+Either may be right (the GIS may include later amendments); check the amendments before overriding.

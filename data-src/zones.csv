@@ -1,0 +1,92 @@
+zone,layer,part,spec,raw
+10,permit,4.9,31:540:600;31:840:900,Part 4.9 - Permit Parking Places Monday to Friday - 9am to 10am and 2pm to 3pm
+10,paid,6.8,31:540:1200,Part 6.8Exclusive Paid Parking Places Monday to Friday 9am to 8pm - Low Tariff Long Term 11 hours
+10,limited,10.4,127:540:1080,Part 10.4 Limited Waiting Parking Places Monday to Sunday - 9am to 6pm - 4 hours (No return within 1
+11,permit,4.11,31:660:720;31:1080:1140,Part 4.11 Permit Holders Only Monday to Friday 11 am - Noon & 6 - 7 pm
+12,permit,4.12,127:540:600;127:780:840,Part 4.12 Permit Holders Only Monday to Sunday 9 am - 10am & 1pm - 2 pm
+12,paid,6.3,127:540:1200,Part 6.3 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm
+A,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+A,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff- Medium
+A,shared,5.7,127:540:1200,Part 5.7 Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff - Long
+C,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+C,shared,5.1,127:540:1200,Part 5.1 - Shared Permit or Paid Parking Place Monday to Sunday - 9am to 8pm - Low Tariff Short Term - 2 hours
+C,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium Term - 4
+C,shared,5.7,127:540:1200,Part 5.7 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long Term 11
+C,paid,6.1,127:540:1200,Part 6.1 - Exclusive Paid Places Monday to Sunday - 9am to 8pm - Low Tariff Short term - 2 hours (No return
+E,permit,4.5,31:540:1200,Part 4.5 - Permit Parking Places Monday to Friday - 9am to 8pm
+E,shared,5.6,31:540:1200,Part 5.6 Shared Permit or Paid Parking Places Monday to Friday - 9am to 8pm - Low Tariff Medium
+E,limited,10.9,31:540:1200,Part 10.9 - Limited Waiting Parking Places Monday to Friday - 9am to 8pm -1 hour (No return within 1
+F,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+F,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+G,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+G,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+H,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am - 8pm
+H,shared,5.1,127:540:1200,Part 5.1 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short Term - 2
+H,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+H,shared,5.7,127:540:1200,Part 5.7 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long
+H,paid,6.1,127:540:1200,Part 6.1 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short Term - 2
+I,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+J,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+J,shared,5.7,127:540:1200,Part 5.7 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long
+J,paid,6.1,127:540:1200,Part 6.1 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short Term - 2
+J,limited,10.2,127:540:1200,Part 10.2 Limited Waiting Parking Places Monday to Sunday - 9am to 8pm - 1 hour (No return within 2
+K,permit,4.5,31:540:1200,Part 4.5 - Permit Parking Places Monday to Friday - 9am to 8pm
+K,shared,5.6,31:540:1200,Part 5.6 - Shared Permit or Paid Parking Places Monday to Friday - 9am to 8pm – Low Tariff Medium
+K,paid,6.7,31:540:1200,Part 6.7 - Exclusive Paid Parking Places Monday to Friday 9am to 8pm - Low Tariff Short Term – 2
+L,permit,4.7,127:660:720;127:1080:1140,Part 4.7 Permit Holders Only  Monday to Sunday  11 am - Noon & 6 - 7 pm
+L,limited,10.3,127:540:1080,Part 10.3 Limited Waiting Parking Places Monday to Sunday – 9am to 6pm – 2 hours (No Return within
+L,limited,10.7,63:480:1080,Part 10.7 Limited Waiting Parking Places Monday to Saturday – 8am to 6pm – 4 hours (No Return
+M,shared,5.9,127:540:1200,Part 5.9 Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Medium Tariff Short
+M,shared,5.10,127:540:1200,Part 5.10 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Medium Tariff Medium Term -
+M,shared,5.13,127:540:1200,Part 5.13 Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Medium Tariff Long
+N,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+N,shared,5.1,127:540:1200,Part 5.1 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short
+N,shared,5.4,127:540:1200,Part 5.4 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+N,shared,5.7,127:540:1200,Part 5.7 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long
+N,paid,6.1,127:540:1200,Part 6.1 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short Term - 2
+N,limited,10.5,127:480:1080,Part 10.5 Limited Waiting Parking Places Monday to Sunday - 8am to 6pm - 1 hour ( No return within 1
+O,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+O,permit,4.4,63:540:1200,Part 4.4 - Permit Parking Places Monday to Saturday - 9am to 8pm
+O,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+O,shared,5.7,127:540:1200,Part 5.7 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long
+O,shared,5.8,63:540:1200,Part 5.8 - Shared Permit or Paid Parking Places Monday to Saturday - 9am to 8pm - Low Tariff Long Term 11
+O,paid,6.2,63:540:1200,Part 6.2 - Exclusive Paid Parking Places Monday to Saturday - 9am to 8pm - Low Tariff Short Term - 2
+P,permit,4.8,31:540:600;31:780:840,Part 4.8 Permit Parking Places Monday to Friday – 9am to 10am and 1pm to 2pm
+P,limited,10.4,127:540:1080,Part 10.4 Limited Waiting Parking Places Monday to Sunday – 9am to 6pm – 4 hours (No Return within
+Q,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+Q,shared,5.1,127:540:1200,Part 5.1 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short
+Q,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+Q,shared,5.7,127:540:1200,Part 5.7 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long
+Q,paid,6.1,127:540:1200,Part 6.1 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short Term - 2
+R,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+R,permit,4.2,127:540:1200,Part 4.2 - Permit Parking Places Monday to Sunday - 9am to 8pm (N and R CPZ Permit holders)
+R,shared,5.1,127:540:1200,Part 5.1 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Short
+R,shared,5.2,127:540:1200,Part 5.2 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm (N and R CPZ
+R,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+R,shared,5.7,127:540:1200,Part 5.7 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long
+R,paid,6.6,127:540:1200,Part 6.6 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long Term 11
+S,permit,4.11,31:660:720;31:1080:1140,Part 4.11 Permit Holders Only Monday to Friday 11 am - Noon & 6 - 7 pm
+T,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+T,shared,5.3,127:540:1200,Part 5.3 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium
+T,shared,5.7,127:540:1200,Part 5.7 Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long Term
+U,permit,4.10,31:600:660;31:1020:1080,Part 4.10 - Permit Parking Places Monday to Friday - 10am to 11am & 5pm to 6pm
+U,limited,10.8,63:540:1080,Part 10.8 Limited waiting for 1 hour (no return within 1 hour) Monday to Saturday 9am to 6pm
+U,limited,10.10,31:420:1080,Part 10.10 Limited Waiting 30 mins (no return within 1 hour) Monday to Friday 7am to 6pm
+W,permit,4.6,127:600:660;127:1140:1200,Part 4.6 - Permit Parking Places Monday to Sunday - 10am to 11am and 7pm to 8pm
+W,paid,6.3,127:540:1200,Part 6.3 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Medium Term - 4
+W,paid,6.6,127:540:1200,Part 6.6 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Low Tariff Long Term - 11
+W,limited,10.1,127:540:1200,Part 10.1 - Limited Waiting Parking Places Monday to Sunday - 9am to 8pm- 2 hours (No return within 1
+X,permit,4.11,31:660:720;31:1080:1140,Part 4.11 Permit Holders Only  Monday to Friday  11 am - Noon & 6 - 7 pm
+X,limited,10.6,63:480:1080,Part 10.6 Limited waiting for 1 hour (no return within 1 hour) Monday to Saturday 8am to 6pm
+Y,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+Y,permit,4.3,,Part 4.3 - Permit Parking Places Monday to Sunday - 9am to 8pm except 9am to 4pm on any Saturday
+Y,shared,5.9,127:540:1200,Part 5.9 - Shared Permit or Paid Parking Places Monday to Sunday 9am to 8pm - Medium Tariff Short Term - 2
+Y,shared,5.10,127:540:1200,Part 5.10 Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - Medium Tariff Medium Term - 4
+Y,shared,5.11,127:540:1200,Part 5.11 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - High Tariff Short
+Y,shared,5.12,127:540:1200,Part 5.12 - Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - High Tariff Medium
+Y,paid,6.4,127:540:1200,Part 6.4 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - Medium Tariff Short Term -
+Y,paid,6.5,127:540:1200,Part 6.5 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - High Tariff Short Term - 2
+Z,permit,4.1,127:540:1200,Part 4.1 - Permit Parking Places Monday to Sunday - 9am to 8pm
+Z,shared,5.11,127:540:1200,Part 5.11- Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - High Tariff Short
+Z,shared,5.12,127:540:1200,Part 5.12- Shared Permit or Paid Parking Places Monday to Sunday - 9am to 8pm - High Tariff Medium
+Z,paid,6.5,127:540:1200,Part 6.5 - Exclusive Paid Parking Places Monday to Sunday - 9am to 8pm - High Tariff Short Term - 2
