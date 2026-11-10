@@ -38,6 +38,7 @@
 
   <div id="chips" role="group" aria-label="Time and what the map shows">
     <button type="button" id="timeChip" class="chip time" aria-expanded="false">Now</button>
+    <button type="button" id="stayChip" class="chip time" aria-expanded="false">Any stay</button>
     <button type="button" class="chip cat on" data-cat="pay" aria-pressed="true">Paid &amp; shared</button>
     <button type="button" class="chip cat" data-cat="permit" aria-pressed="false">Permit bays</button>
     <button type="button" class="chip cat" data-cat="sy" aria-pressed="false">Single yellow</button>
@@ -56,6 +57,17 @@
     <label class="dt">Or pick a time (UK time)
       <input type="datetime-local" id="dt">
     </label>
+  </div>
+
+  <div id="stayPanel" hidden>
+    <div class="presets">
+      <button type="button" data-s="0">Any stay</button>
+      <button type="button" data-s="60">1 hour</button>
+      <button type="button" data-s="120">2 hours</button>
+      <button type="button" data-s="240">4 hours</button>
+      <button type="button" data-s="600">All day</button>
+    </div>
+    <p class="note small">Hides paid and limited-waiting bays whose maximum stay is shorter than this. "No return" rules still apply, so check the signs.</p>
   </div>
 
   <div id="results" aria-live="polite">

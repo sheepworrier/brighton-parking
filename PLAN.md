@@ -198,3 +198,9 @@ Node 20 scripts, no deps beyond `simplify-geojson`-style tiny helper (Douglas–
 - Serve `site/` locally and check on the Pixel via Chrome remote debugging: Lighthouse PWA pass, installable, data ≤ budget in the Network tab.
 - Spot-check 5 real streets on foot/with Street View against the list for free/paid/permit status.
 - Trigger `workflow_dispatch` on Actions and confirm the no-change case commits nothing and a seeded bad string turns the job red.
+
+
+## Phase 2 status (2026-11-10)
+- Done: stay-length filter (chip + `s=` share param, hides paid/limited bays with max stay shorter than planned); weekly TRO watch (`scripts/tro-watch.mjs`, `.github/workflows/tro-watch.yml`, baseline `data-src/tro-seen.json`, opens a `tro-change` issue).
+- Event days: covered by the persistent "Check the signs" banner; no dates yet (Phase 5).
+- Still to do: street names (OSM snap or TRO street lists), CI alignment check vs OSM, `zones.csv` cross-check, tiling of double yellows, tariff letters on the map.

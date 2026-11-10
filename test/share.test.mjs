@@ -61,3 +61,13 @@ test('label and query are length-limited', () => {
   assert.equal(d.q.length, 100);
   assert.equal(d.origin.label.length, 80);
 });
+
+test('planned stay round-trips and rubbish is ignored', () => {
+  const o = { lat: 50.8, lon: -0.1, label: 'x' };
+  const h = encodeView({ origin: o, cats: base, stay: 120 });
+  assert.ok(h.includes('s=120'));
+  assert.equal(decodeView(h, now, CATS).stay, 120);
+  assert.equal(decodeView('s=5', now, CATS).stay, undefined);
+  assert.equal(decodeView('s=abc', now, CATS).stay, undefined);
+  assert.ok(!encodeView({ origin: o, cats: base, stay: 0 }).includes('s='));
+});

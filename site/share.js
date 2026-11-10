@@ -5,7 +5,7 @@ const enc = encodeURIComponent;
 const r = (n, dp) => Number(n).toFixed(dp);
 
 /** view: {q, origin:{lat,lon,label}, when:Date|null, cats:{name:boolean}, map:{lat,lon,zoom}} -> hash string without '#' */
-export function encodeView({ q, origin, when, cats, map } = {}) {
+export function encodeView({ q, origin, when, cats, map, stay } = {}) {
   const parts = [];
   if (q) parts.push(`q=${enc(String(q).slice(0, 100))}`);
   if (origin) {
@@ -14,6 +14,7 @@ export function encodeView({ q, origin, when, cats, map } = {}) {
     if (label) parts.push(`l=${enc(String(label).slice(0, 80))}`);
   }
   if (when) parts.push(`t=${when.toISOString().slice(0, 16)}Z`);
+  if (stay) parts.push(`s=${Math.round(stay)}`);
   const on = Object.keys(cats || {}).filter((k) => cats[k]);
   if (on.join(',') !== DEFAULT_CATS.join(',')) parts.push(`c=${on.length ? on.join(',') : 'none'}`);
   if (map) parts.push(`v=${r(map.lat, 4)},${r(map.lon, 4)},${r(map.zoom, 1)}`);
@@ -44,6 +45,7 @@ export function decodeView(hash, now = new Date(), validCats = []) {
     // a link shared yesterday with "tonight 19:00" shouldn't open in the past
     if (!Number.isNaN(d.getTime()) && d.getTime() >= now.getTime() - 10 * 60000 && d.getTime() < now.getTime() + 60 * 86400000) out.when = d;
   }
+  if (p.s && /^\d{1,4}$/.test(p.s) && +p.s >= 15 && +p.s <= 1440) out.stay = +p.s;
   if (p.c != null) {
     const names = p.c === 'none' ? [] : p.c.split(',').filter((c) => validCats.includes(c));
     out.cats = Object.fromEntries(validCats.map((c) => [c, names.includes(c)]));

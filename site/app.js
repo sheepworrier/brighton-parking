@@ -31,6 +31,7 @@ const state = {
   origin: null,             // {lat, lon, label}
   cats: { pay: true, permit: false, sy: false, limited: false, dy: false, red: false },
   limit: 30,
+  stay: 0,                  // planned stay in minutes; 0 = any
   seq: 0,
 };
 const nowOrWhen = () => state.when || new Date();
@@ -39,15 +40,16 @@ const nowOrWhen = () => state.when || new Date();
 const shared = decodeView(location.hash, new Date(), Object.keys(CATS));
 if (shared.cats) Object.assign(state.cats, shared.cats);
 if (shared.when) state.when = shared.when;
+if (shared.stay) state.stay = shared.stay;
 if (shared.origin) { state.origin = shared.origin; state.q = shared.q || ''; }
 let booted = false;
 let hashTimer = null;
 function writeHash() {
   if (!booted) return;
   const c = map.getCenter();
-  const h = encodeView({ q: state.q, origin: state.origin, when: state.when, cats: state.cats, map: { lat: c.lat, lon: c.lng, zoom: map.getZoom() } });
+  const h = encodeView({ q: state.q, origin: state.origin, when: state.when, cats: state.cats, stay: state.stay, map: { lat: c.lat, lon: c.lng, zoom: map.getZoom() } });
   // only worth a URL once there is something to share; the bare page stays clean
-  const hasView = state.origin || h.includes('c=') || h.includes('t=');
+  const hasView = state.origin || h.includes('c=') || h.includes('t=') || h.includes('s=');
   try { history.replaceState(null, '', hasView ? `#${h}` : location.pathname + location.search); } catch { /* sandboxed */ }
 }
 const writeHashSoon = () => { clearTimeout(hashTimer); hashTimer = setTimeout(writeHash, 400); };
@@ -193,7 +195,9 @@ async function refresh() {
   clearList();
 
   const when = nowOrWhen();
-  const featsOf = (cat) => CATS[cat].sources.flatMap((k) => state.loaded[k]?.features ?? []);
+  // a bay whose maximum stay is shorter than the planned stay is no use
+  const fits = (f) => !state.stay || f.properties.ms == null || f.properties.ms >= state.stay;
+  const featsOf = (cat) => CATS[cat].sources.flatMap((k) => state.loaded[k]?.features ?? []).filter(fits);
   const evalCluster = (c) => {
     const p = c.items[0].f.properties;
     return { c, p, ev: evaluate({ k: p.k, r: p.r }, state.rulesets, when) };
@@ -214,7 +218,7 @@ async function refresh() {
 
   const whenTxt = state.when ? chipFmt.format(when) : 'now';
   const frag = document.createDocumentFragment();
-  frag.append(el('p', 'count', `${res.pay.length} paid &amp; shared option${res.pay.length === 1 ? '' : 's'} within ${res.radius === 1000 ? '1 km' : '600 m'} of ${esc(state.origin.label)}, at ${esc(whenTxt)}`));
+  frag.append(el('p', 'count', `${res.pay.length} paid &amp; shared option${res.pay.length === 1 ? '' : 's'} within ${res.radius === 1000 ? '1 km' : '600 m'} of ${esc(state.origin.label)}, at ${esc(whenTxt)}${state.stay ? `, for ${esc(fmtDuration(state.stay))}` : ''}`));
   if (!res.pay.length) frag.append(el('p', 'note', 'No paid or shared bays here. Check the free options below, or search elsewhere.'));
   res.pay.slice(0, state.limit).forEach((r) => frag.append(rowEl(r, 'pay')));
   if (res.pay.length > state.limit) {
@@ -421,6 +425,20 @@ $('#dt').addEventListener('change', (e) => {
 });
 setInterval(() => { if (!state.when && state.origin && !document.hidden) refresh(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !state.when && state.origin) refresh(); });
+
+// ---------- stay length ----------
+const stayChip = $('#stayChip'), stayPanel = $('#stayPanel');
+function renderStay() { stayChip.textContent = state.stay ? `Stay ${state.stay >= 600 ? 'all day' : fmtDuration(state.stay)}` : 'Any stay'; }
+stayChip.addEventListener('click', () => { stayPanel.hidden = !stayPanel.hidden; stayChip.setAttribute('aria-expanded', String(!stayPanel.hidden)); });
+stayPanel.addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.s;
+  if (v == null) return;
+  state.stay = +v; state.limit = 30;
+  renderStay(); writeHashSoon();
+  stayPanel.hidden = true; stayChip.setAttribute('aria-expanded', 'false');
+  if (state.origin) refresh();
+});
+renderStay();
 
 // ---------- category chips (what the map shows) ----------
 $('#chips').addEventListener('click', (e) => {

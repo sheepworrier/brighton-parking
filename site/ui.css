@@ -42,9 +42,9 @@ html, body { margin: 0; height: 100%; font: 15px/1.35 system-ui, -apple-system, 
 .chip.cat.on { background: var(--chip); color: var(--fg); border-color: var(--fg); font-weight: 600; }
 .chip.time { background: var(--navy); color: #fff; border-color: var(--navy); font-weight: 600; }
 
-#timePanel { padding: 0 12px 10px; }
-#timePanel .presets { display: flex; flex-wrap: wrap; gap: 8px; }
-#timePanel button { height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); color: var(--fg); font-size: 14px; }
+#timePanel, #stayPanel { padding: 0 12px 10px; }
+#timePanel .presets, #stayPanel .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+#timePanel button, #stayPanel button { height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); color: var(--fg); font-size: 14px; }
 #timePanel .dt { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); }
 #timePanel input { display: block; margin-top: 4px; height: 42px; width: 100%; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; background: var(--bg); color: var(--fg); }
 

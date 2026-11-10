@@ -1,0 +1,32 @@
+name: TRO watch
+# The legal Traffic Regulation Order changes faster than the council's GIS. Once a week, look at the
+# TRO index for amendments we haven't acknowledged and open an issue so a human can check the data.
+on:
+  schedule:
+    - cron: '30 5 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Compare TRO index with the seen list
+        id: tro
+        run: node scripts/tro-watch.mjs
+      - name: Open or update an issue
+        if: steps.tro.outputs.new_count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --label tro-change --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file tro-report.md
+          else
+            gh label create tro-change --color fbca04 --description "New TRO amendments to review" 2>/dev/null || true
+            gh issue create --title "New parking TRO documents to review" --label tro-change --body-file tro-report.md
+          fi
