@@ -1,4 +1,6 @@
-// Pull every configured layer from the council FeatureServer as GeoJSON (WGS84), paged.
+// Pull every configured layer from the council FeatureServer as GeoJSON, paged.
+// IMPORTANT: coordinates are requested in NATIVE British National Grid metres (outSR=27700). The server's own
+// WGS84 reprojection skips the datum shift and is ~130 m out; scripts/lib/bng.mjs converts correctly.
 import { mkdir, writeFile } from 'node:fs/promises';
 import { BASE, UA, PAGE, LAYERS } from './lib/config.mjs';
 
@@ -27,7 +29,7 @@ for (const id of Object.keys(LAYERS)) {
   const features = [];
   for (let offset = 0; offset < count; offset += PAGE) {
     const page = await getJson(
-      q(`outFields=*&outSR=4326&orderByFields=OBJECTID&resultOffset=${offset}&resultRecordCount=${PAGE}`) + 'geojson');
+      q(`outFields=*&outSR=27700&orderByFields=OBJECTID&resultOffset=${offset}&resultRecordCount=${PAGE}`) + 'geojson');
     features.push(...page.features);
     await new Promise((r) => setTimeout(r, 500)); // be polite
   }

@@ -6,8 +6,8 @@ Personal project, no accounts, installable as a PWA. See [PLAN.md](PLAN.md) for 
 
 ## How it works
 
-- `scripts/fetch.mjs` pages every layer from the council FeatureServer (GeoJSON, WGS84) into `.cache/raw`.
-- `scripts/normalise.mjs` parses the free-text Days/Times into compact rules (`[dayMask, fromMin, toMin]`), applies `data-src/typos.json` and `data-src/overrides.csv`, rounds and simplifies geometry, and writes `.cache/out`.
+- `scripts/fetch.mjs` pages every layer from the council FeatureServer into `.cache/raw` as GeoJSON in **native British National Grid metres** (the server's own WGS84 output skips the datum shift and is ~130 m out).
+- `scripts/normalise.mjs` parses the free-text Days/Times into compact rules (`[dayMask, fromMin, toMin]`), applies `data-src/typos.json` and `data-src/overrides.csv`, converts BNG to WGS84 (`scripts/lib/bng.mjs`), rounds and simplifies geometry, and writes `.cache/out`.
 - `scripts/validate.mjs` refuses to publish if anything is unparseable, a layer shrinks >10%, a layer is empty or has too many unknown-hours features. Otherwise it copies to `site/data`.
 - `site/engine.js` is a pure status engine (Europe/London time, BST aware). `site/app.js` is the UI (MapLibre, bottom sheet).
 - A weekly GitHub Action refreshes the data; a failure opens an issue and leaves the live data untouched.

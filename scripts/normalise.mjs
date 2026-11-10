@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { LAYERS, COORD_DP, SIMPLIFY_TOL } from './lib/config.mjs';
 import * as P from './lib/parse.mjs';
 import { cleanGeometry } from './lib/geom.mjs';
+import { bngToLonLat } from './lib/bng.mjs';
 
 const root = new URL('../', import.meta.url);
 const raw = (f) => new URL(`.cache/raw/${f}`, root);
@@ -71,7 +72,18 @@ function rulesForSingleYellow(g) {
   return { entries: P.entriesFor(mask, windows) };
 }
 
-const meta = { layers: {}, rulesets: 0 };
+// Raw geometry is in BNG metres. Convert to WGS84, and refuse anything that already looks like degrees
+// (that would mean the fetch regressed to the server's un-shifted outSR=4326).
+function mapCoords(c) {
+  if (typeof c[0] === 'number') {
+    if (Math.abs(c[0]) < 1000) throw new Error(`expected British National Grid metres, got ${JSON.stringify(c)}; fetch.mjs must use outSR=27700`);
+    return bngToLonLat(c[0], c[1]);
+  }
+  return c.map(mapCoords);
+}
+const toWgs84 = (g) => (g && g.coordinates && g.coordinates.length ? { type: g.type, coordinates: mapCoords(g.coordinates) } : g);
+
+const meta = { layers: {}, rulesets: 0, crs: 'EPSG:27700 -> WGS84 (Helmert + local shift, see scripts/lib/bng.mjs)' };
 for (const [id, cfg] of Object.entries(LAYERS)) {
   const info = JSON.parse(await readFile(raw(`L${id}.info.json`), 'utf8'));
   const gj = JSON.parse(await readFile(raw(`L${id}.geojson`), 'utf8'));
@@ -82,7 +94,7 @@ for (const [id, cfg] of Object.entries(LAYERS)) {
     const oid = p.OBJECTID;
     const g = getter(p);
     const err = (field, rawv, msg) => errors.push({ layer: +id, objectid: oid, field, raw: rawv, msg });
-    const geometry = cleanGeometry(f.geometry, COORD_DP, SIMPLIFY_TOL);
+    const geometry = cleanGeometry(toWgs84(f.geometry), COORD_DP, SIMPLIFY_TOL);
     if (!geometry) { if (!f.geometry || !f.geometry.coordinates?.length) stats.nullGeometry++; else stats.emptyGeometry++; continue; }
 
     // apply overrides

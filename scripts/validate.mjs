@@ -35,6 +35,16 @@ if (problems.length) {
   process.exit(1);
 }
 
+// geometry sanity: every output coordinate must sit inside Greater Brighton & Hove
+for (const l of Object.values(LAYERS)) {
+  const g = JSON.parse(await readFile(out(`${l.key}.geojson`), 'utf8'));
+  let bad = 0;
+  const walk = (c) => (typeof c[0] === 'number' ? (c[0] < -0.35 || c[0] > 0.12 || c[1] < 50.77 || c[1] > 50.93) && bad++ : c.forEach(walk));
+  g.features.forEach((f) => walk(f.geometry.coordinates));
+  if (bad) problems.push(`layer ${l.key}: ${bad} coordinate(s) outside the Brighton & Hove area`);
+}
+if (problems.length) { console.error('VALIDATION FAILED - nothing published:\n - ' + problems.join('\n - ')); process.exit(1); }
+
 // content hash of everything the client downloads (so an unchanged council dataset => no commit)
 const files = [...Object.values(LAYERS).map((l) => `${l.key}.geojson`), 'rules.json'];
 const hash = createHash('sha1');

@@ -1,6 +1,6 @@
 {
- "generated": "2026-11-10T14:36:15.884Z",
- "hash": "989604b2236da0ce",
+ "generated": "2026-11-10T16:13:45.560Z",
+ "hash": "beef5fbcf70d5413",
  "layers": {
   "0": {
    "key": "red",
@@ -15,9 +15,9 @@
   "1": {
    "key": "dy",
    "count": 12158,
-   "kept": 12027,
-   "emptyGeometry": 130,
-   "nullGeometry": 1,
+   "kept": 12025,
+   "emptyGeometry": 122,
+   "nullGeometry": 11,
    "unknown": 0,
    "unknownReasons": {},
    "lastEditDate": null
@@ -79,5 +79,6 @@
    "lastEditDate": null
   }
  },
- "rulesets": 36
+ "rulesets": 36,
+ "crs": "EPSG:27700 -> WGS84 (Helmert + local shift, see scripts/lib/bng.mjs)"
 }
