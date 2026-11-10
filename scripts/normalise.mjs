@@ -1,6 +1,7 @@
 // Raw council GeoJSON -> compact, normalised site data in .cache/out (validate.mjs publishes it).
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { LAYERS, COORD_DP, SIMPLIFY_TOL } from './lib/config.mjs';
 import * as P from './lib/parse.mjs';
 import { cleanGeometry } from './lib/geom.mjs';
@@ -29,8 +30,8 @@ const usedOverrides = new Set();
 
 // OSM roads (scripts/osm-roads.mjs): street names + alignment check. Required in CI (REQUIRE_OSM=1).
 let roads = null;
-try { roads = buildIndex(JSON.parse(await readFile(new URL('.cache/osm-roads.json', root), 'utf8')).ways); }
-catch { if (process.env.REQUIRE_OSM) throw new Error('.cache/osm-roads.json missing; run scripts/osm-roads.mjs'); console.warn('No OSM roads: street names and the alignment check are skipped'); }
+try { roads = buildIndex(JSON.parse(gunzipSync(await readFile(new URL('data-src/osm-roads.json.gz', root))).toString()).ways); }
+catch { if (process.env.REQUIRE_OSM) throw new Error('data-src/osm-roads.json.gz missing; run node scripts/osm-roads.mjs'); console.warn('No OSM roads: street names and the alignment check are skipped'); }
 const streets = [];            // interned street names
 const streetIdx = new Map();
 const NAMED = new Set(['paid', 'shared', 'permit', 'limited', 'sy', 'red']);

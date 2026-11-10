@@ -31,19 +31,8 @@ jobs:
       - name: Fetch from council
         run: node scripts/fetch.mjs
 
-      # OpenStreetMap roads give street names and the alignment check. Overpass is flaky, so keep the last
-      # good extract in the Actions cache and carry on with it if today's fetch fails.
-      - name: Restore last OSM extract
-        uses: actions/cache@v4
-        with:
-          path: .cache/osm-roads.json
-          key: osm-roads-${{ github.run_id }}
-          restore-keys: osm-roads-
-
-      - name: Fetch OSM roads
-        continue-on-error: true
-        run: node scripts/osm-roads.mjs
-
+      # Street names and the alignment check use data-src/osm-roads.json.gz (committed; refresh it by hand
+      # with `node scripts/osm-roads.mjs`, because Overpass is too flaky to call from here).
       - name: Normalise
         env:
           REQUIRE_OSM: '1'

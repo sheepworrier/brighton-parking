@@ -1,7 +1,10 @@
 // Fetch named OpenStreetMap roads for Brighton & Hove from Overpass into .cache/osm-roads.json.
 // Used by normalise (street names) and by the alignment check (catches coordinate/datum errors).
+// Run occasionally by hand (`node scripts/osm-roads.mjs`); the result is committed as data-src/osm-roads.json.gz,
+// because Overpass is too slow/flaky to depend on inside the weekly Action (it timed out at 20 min).
 // The area is fetched as small tiles (Overpass rejects big queries), each tried against several mirrors.
 import { writeFile, mkdir } from 'node:fs/promises';
+import { gzipSync } from 'node:zlib';
 import { UA } from './lib/config.mjs';
 
 const MIRRORS = ['https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
@@ -41,5 +44,7 @@ for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
 const ways = [...byId.values()];
 if (ways.length < 2000) { console.error(`only ${ways.length} ways; expected thousands`); process.exit(1); }
 await mkdir(new URL('../.cache/', import.meta.url), { recursive: true });
-await writeFile(new URL('../.cache/osm-roads.json', import.meta.url), JSON.stringify({ fetched: new Date().toISOString(), baseTimestamp: ts, ways }));
+const body = JSON.stringify({ fetched: new Date().toISOString(), baseTimestamp: ts, ways });
+await writeFile(new URL('../.cache/osm-roads.json', import.meta.url), body);
+await writeFile(new URL('../data-src/osm-roads.json.gz', import.meta.url), gzipSync(body, { level: 9 }));
 console.log(`OSM: ${ways.length} named road ways`);
