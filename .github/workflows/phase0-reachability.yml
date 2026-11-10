@@ -1,0 +1,57 @@
+name: Phase 0 - council server reachability
+
+# Manual only. Checks that GitHub-hosted runners can reach the B&H ArcGIS
+# FeatureServer, that counts match what we saw locally, and that paging works.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reachability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE: https://gis.brighton-hove.gov.uk/server/rest/services/Parking/MBTRO/FeatureServer
+      UA: bh-parking-finder-personal (+https://github.com/${{ github.repository }})
+    steps:
+      - name: Service root
+        run: |
+          code=$(curl -sS -m 60 -A "$UA" -o root.json -w '%{http_code} in %{time_total}s' "$BASE?f=json")
+          echo "service root: $code"
+          echo "### Service root: $code" >> "$GITHUB_STEP_SUMMARY"
+          case "$code" in 200*) ;; *) echo "::error::server not reachable from runner"; exit 1;; esac
+          grep -q '"maxRecordCount":2000' root.json || { echo "::error::unexpected service metadata"; exit 1; }
+
+      - name: Feature counts (expected from local spike on 2026-11-10)
+        run: |
+          fail=0
+          echo "| layer | expected | got |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          for pair in 57:147 62:2143 60:5464 53:179 39:270 1:12158 0:35; do
+            l=${pair%%:*}; exp=${pair##*:}
+            got=$(curl -sS -m 60 -A "$UA" "$BASE/$l/query?where=1%3D1&returnCountOnly=true&f=json" | sed -E 's/.*"count":([0-9]+).*/\1/')
+            echo "layer $l expected~$exp got $got"
+            echo "| $l | $exp | $got |" >> "$GITHUB_STEP_SUMMARY"
+            case "$got" in ''|*[!0-9]*) echo "::error::layer $l returned no count"; fail=1;; esac
+            sleep 1
+          done
+          exit $fail
+
+      - name: Paging works (layer 60, offset 2000, ordered)
+        run: |
+          curl -sS -m 120 -A "$UA" -o page.json -w 'http %{http_code}, %{size_download} bytes, %{time_total}s\n' \
+            "$BASE/60/query?where=1%3D1&outFields=*&outSR=4326&f=geojson&orderByFields=OBJECTID&resultOffset=2000&resultRecordCount=2000"
+          n=$(grep -o '"type":"Feature"' page.json | wc -l)
+          echo "features in page: $n"
+          echo "### Paging: layer 60 offset 2000 returned $n features (expect 2000)" >> "$GITHUB_STEP_SUMMARY"
+          [ "$n" -eq 2000 ] || { echo "::error::paging returned $n, expected 2000"; exit 1; }
+
+      - name: TRO host reachable
+        run: |
+          code=$(curl -sS -m 60 -A "$UA" -L -o tro.html -w '%{http_code}' https://tro.tpt.gov.uk/brighton-and-hove/)
+          n=$(grep -o 'Zone-Y-TRO162024.pdf' tro.html | wc -l)
+          echo "TRO index $code, Zone Y link occurrences: $n"
+          echo "### TRO index: $code (Zone Y schedule link found: $n)" >> "$GITHUB_STEP_SUMMARY"
+          [ "$code" = 200 ] && [ "$n" -ge 1 ] || { echo "::error::TRO index not as expected"; exit 1; }
