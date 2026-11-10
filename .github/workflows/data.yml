@@ -1,0 +1,68 @@
+name: Refresh data
+
+# Weekly pull from the council FeatureServer. Fails loudly (red run + a GitHub issue) and publishes
+# nothing if the data looks wrong, so the site keeps serving the last good data.
+on:
+  schedule:
+    - cron: '0 4 * * 1'      # Mondays 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Fetch from council
+        run: node scripts/fetch.mjs
+
+      - name: Normalise
+        run: node scripts/normalise.mjs
+
+      - name: Validate and publish to site/data
+        run: node scripts/validate.mjs --publish
+
+      - name: Commit if changed
+        run: |
+          if [ -n "$(git status --porcelain site/data)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site/data
+            git commit -m "Refresh council parking data"
+            git push
+          else
+            echo "No data change."
+          fi
+
+      - name: Open or update a failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create data-failure --color B60205 --description "Weekly data refresh failed" 2>/dev/null || true
+          body="The weekly data refresh failed. Nothing was published, so the site is still serving the last good data.
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Usual causes: a new unparseable Days/Times string (add it to data-src/typos.json or data-src/overrides.csv), a layer losing >10% of its features, or the council server being down."
+          existing=$(gh issue list --label data-failure --state open --json number -q '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --label data-failure --title "Data refresh failed" --body "$body"
+          fi

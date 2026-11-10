@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>B&amp;H Parking Finder</title>
+<meta name="description" content="On-street parking status for Brighton &amp; Hove: what's free, paid or permit-only, and when that changes.">
+<meta name="theme-color" content="#14305a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="map" aria-label="Map of parking bays"></div>
+
+<section id="sheet" data-state="peek" aria-label="Search and results">
+  <div id="grab" role="button" tabindex="0" aria-label="Expand or collapse results"><span></span></div>
+
+  <div class="signs" role="note"><b>Check the signs.</b> Suspensions, temporary orders and event days aren't in the data.</div>
+
+  <form id="searchForm" autocomplete="off">
+    <input id="q" type="search" inputmode="search" enterkeyhint="search" placeholder="Postcode or place, e.g. BN1 1AA" aria-label="Postcode or place">
+    <button type="button" id="locate" aria-label="Use my location" title="Use my location">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button type="submit" id="go">Search</button>
+  </form>
+
+  <div id="chips" role="group" aria-label="Time and filters">
+    <button type="button" id="timeChip" class="chip time" aria-expanded="false">Now</button>
+    <button type="button" class="chip f on" data-f="free">Free</button>
+    <button type="button" class="chip f on" data-f="paid">Paid</button>
+    <button type="button" class="chip f on" data-f="limited">Limited</button>
+    <button type="button" class="chip f on" data-f="permit">Permit</button>
+    <button type="button" class="chip f on" data-f="unknown">Unknown</button>
+    <button type="button" class="chip f" data-f="nopark">No parking</button>
+  </div>
+
+  <div id="timePanel" hidden>
+    <div class="presets">
+      <button type="button" data-p="now">Now</button>
+      <button type="button" data-p="plus1">In 1 hour</button>
+      <button type="button" data-p="tonight">Tonight 19:00</button>
+      <button type="button" data-p="tomorrow">Tomorrow 09:00</button>
+    </div>
+    <label class="dt">Or pick a time (UK time)
+      <input type="datetime-local" id="dt">
+    </label>
+  </div>
+
+  <div id="results" aria-live="polite">
+    <p class="hint">Search a postcode or place, or tap <b>◎</b> to use your location. Tap any bay on the map for its rules.</p>
+    <details class="legend">
+      <summary>Map key</summary>
+      <ul>
+        <li><i class="sw" style="background:#9ecae1"></i><i class="sw" style="background:#4292c6"></i><i class="sw" style="background:#08306b"></i> Paid / shared bays: Low · Medium · High tariff</li>
+        <li><i class="sw" style="background:#f08a24"></i> Permit holders only</li>
+        <li><i class="sw" style="background:#3fa66b"></i> Free limited waiting</li>
+        <li><i class="ln" style="background:#f2c200"></i> Single yellow (dashed)</li>
+        <li><i class="ln" style="background:#c98a00"></i> Double yellow</li>
+        <li><i class="ln" style="background:#c1121f"></i> Red route</li>
+      </ul>
+    </details>
+  </div>
+
+  <footer id="foot">
+    Contains data from Brighton &amp; Hove City Council, shown for personal use.
+    <span id="dataDate"></span>
+    Map &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="https://openfreemap.org">OpenFreeMap</a>.
+    Tariffs: <a href="https://www.brighton-hove.gov.uk/parking-and-travel/parking/parking-charges">council charges</a>.
+  </footer>
+</section>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
