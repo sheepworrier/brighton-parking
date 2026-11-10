@@ -10,7 +10,7 @@ A personal, no-login, phone-first PWA for finding on-street parking in Brighton 
 ### 2.1 Reachability / CORS
 - FeatureServer reachable from here: `?f=json` 200, `query` works, `outSR=4326&f=geojson` works.
 - **CORS: assume the browser cannot call it directly.** A GET with an `Origin` header returned only `Vary: Origin`, with no `Access-Control-Allow-Origin`. The OPTIONS preflight returned `Allow-Methods/Headers` but also no allow-origin. So the client must use our own static files (matches the proposed architecture).
-- **Not yet tested: reachability from GitHub Actions runners.** Cannot be tested from here. Phase 0 task: a 5-line workflow that curls `?f=json` and a count query.
+- **GitHub Actions reachability: confirmed 2026-11-10** (run 42834537818, 18 s). Runner got service root 200, all 7 layer counts matched local, paging at offset 2000 returned 2000 features, and the TRO index returned 200. No fallback needed.
 - The server sets an `AGS_ROLES` cookie and is IIS/ArcGIS Server: be polite (sequential paging, a User-Agent with a repo URL, no hammering).
 
 ### 2.2 Layers (counts are real; geometry sizes are my estimate at 5 dp, gzipped, unsimplified)
@@ -153,7 +153,7 @@ Node 20 scripts, no deps beyond `simplify-geojson`-style tiny helper (Douglas–
 - **PWA:** manifest, 192/512 icons, service worker caching app shell + data; install prompt works on Pixel Chrome. Offline: last data + engine work; geocoding doesn't.
 
 ## 10. Phased delivery
-**Phase 0 (≈1 h, status: TRO part done 2026-11-10; Actions reachability test written, awaiting first run):** workflow `.github/workflows/phase0-reachability.yml` (manual dispatch) curls the FeatureServer from a GitHub runner, checks counts, paging and the TRO index; poppler installed; zone Y/L/W/P tables extracted and matched to layer 60 (§2.4).
+**Phase 0 (≈1 h, status: DONE 2026-11-10):** workflow `.github/workflows/phase0-reachability.yml` (manual dispatch) curls the FeatureServer from a GitHub runner, checks counts, paging and the TRO index; poppler installed; zone Y/L/W/P tables extracted and matched to layer 60 (§2.4).
 **Phase 1 — weekend MVP:**
 1. `fetch` + `normalise` for layers 57, 62, 60, 53, 39 (+1, 0 as plain no-parking lines); typo table + overrides; validation.
 2. `engine.js` + unit tests (BST, split windows, Mon–Fri on Saturday, always, unknown).
