@@ -131,7 +131,7 @@ async function refresh() {
   const seq = ++state.seq;
   const box = $('#results');
   if (!state.origin) return;
-  box.querySelectorAll('.row, .note, .count, .pick').forEach((n) => n.remove());
+  box.querySelectorAll('.row, .note, .count, .pick, .hint').forEach((n) => n.remove());
   const loading = document.createElement('p'); loading.className = 'note'; loading.textContent = 'Loading bays…';
   box.prepend(loading);
   await rulesReady;
@@ -221,7 +221,7 @@ const inBrighton = (lat, lon) => lon >= BRIGHTON.bbox[0] && lat >= BRIGHTON.bbox
 
 function message(text) {
   const box = $('#results');
-  box.querySelectorAll('.row, .note, .count, .pick').forEach((n) => n.remove());
+  box.querySelectorAll('.row, .note, .count, .pick, .hint').forEach((n) => n.remove());
   const p = document.createElement('p'); p.className = 'note'; p.textContent = text;
   box.prepend(p);
   if ($('#sheet').dataset.state === 'peek') setSheet('half');
@@ -258,7 +258,7 @@ $('#searchForm').addEventListener('submit', async (e) => {
       return setOrigin(results[0]);
     }
     const box = $('#results');
-    box.querySelectorAll('.row, .note, .count, .pick').forEach((n) => n.remove());
+    box.querySelectorAll('.row, .note, .count, .pick, .hint').forEach((n) => n.remove());
     const frag = document.createDocumentFragment();
     const n = document.createElement('p'); n.className = 'count'; n.textContent = 'Which one?'; frag.append(n);
     for (const r of results) {

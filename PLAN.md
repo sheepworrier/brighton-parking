@@ -154,11 +154,12 @@ Node 20 scripts, no deps beyond `simplify-geojson`-style tiny helper (Douglas–
 
 ## 10. Phased delivery
 **Phase 0 (≈1 h, status: DONE 2026-11-10):** workflow `.github/workflows/phase0-reachability.yml` (manual dispatch) curls the FeatureServer from a GitHub runner, checks counts, paging and the TRO index; poppler installed; zone Y/L/W/P tables extracted and matched to layer 60 (§2.4).
-**Phase 1 — weekend MVP:**
+**Phase 1 — weekend MVP (status: DONE 2026-11-10, live at https://sheepworrier.github.io/brighton-parking/):**
 1. `fetch` + `normalise` for layers 57, 62, 60, 53, 39 (+1, 0 as plain no-parking lines); typo table + overrides; validation.
 2. `engine.js` + unit tests (BST, split windows, Mon–Fri on Saturday, always, unknown).
 3. Map + bottom sheet: postcode search, time chip, colour by tariff, popup, nearby list sorted by distance with status and next change.
 4. GitHub Pages deploy, PWA manifest + simple SW, disclaimer, attribution.
+*Built as:* `scripts/{fetch,normalise,validate}.mjs`, `site/{engine,geo,app}.js`, weekly `data.yml` (opens a `data-failure` issue on failure), `pages.yml`, 31 `node:test` tests. *Not in Phase 1 (moved to Phase 2):* street names, tiling of double yellows, bank-holiday list (rules already apply on bank holidays). *Learned:* 125 of 270 single yellows have unknown hours (shown as "Hours unknown. Check the sign."); 130 tiny double-yellow segments collapse when rounded to 5 dp and are dropped; the list is capped at 30 rows with "Show more"; same-key bays within 50 m are merged into one row.
 *Done when:* I can type a postcode, see bays, and the list correctly says e.g. "Zone Y permit bays: free from 20:00".
 **Phase 2:** street-name snap, weekly TRO-watch issue, `zones.csv` cross-check, stay-length filter, generic event-day notice, tiling for double yellows, bank holiday handling, OSM/Nominatim place search polish.
 **Phase 3:** walking-route distance, share link (`#lat,lng,time`), loading/EV/disabled/motorcycle/car-club toggles.
