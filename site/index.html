@@ -14,6 +14,11 @@
 </head>
 <body>
 <div id="map" aria-label="Map of parking bays"></div>
+<div id="tkey" aria-label="Tariff key"><b>Tariff</b>
+  <span><i style="background:#1b9e77"></i>Low</span>
+  <span><i style="background:#f2a900"></i>Medium</span>
+  <span><i style="background:#c0392b"></i>High</span>
+</div>
 
 <section id="sheet" data-state="peek" aria-label="Search and results">
   <div id="grab" role="button" tabindex="0" aria-label="Expand or collapse results"><span></span></div>
@@ -28,14 +33,14 @@
     <button type="submit" id="go">Search</button>
   </form>
 
-  <div id="chips" role="group" aria-label="Time and filters">
+  <div id="chips" role="group" aria-label="Time and what the map shows">
     <button type="button" id="timeChip" class="chip time" aria-expanded="false">Now</button>
-    <button type="button" class="chip f on" data-f="free">Free</button>
-    <button type="button" class="chip f on" data-f="paid">Paid</button>
-    <button type="button" class="chip f on" data-f="limited">Limited</button>
-    <button type="button" class="chip f on" data-f="permit">Permit</button>
-    <button type="button" class="chip f on" data-f="unknown">Unknown</button>
-    <button type="button" class="chip f" data-f="nopark">No parking</button>
+    <button type="button" class="chip cat on" data-cat="pay" aria-pressed="true">Paid &amp; shared</button>
+    <button type="button" class="chip cat" data-cat="permit" aria-pressed="false">Permit bays</button>
+    <button type="button" class="chip cat" data-cat="sy" aria-pressed="false">Single yellow</button>
+    <button type="button" class="chip cat" data-cat="limited" aria-pressed="false">Free limited waiting</button>
+    <button type="button" class="chip cat" data-cat="dy" aria-pressed="false">Double yellow</button>
+    <button type="button" class="chip cat" data-cat="red" aria-pressed="false">Red routes</button>
   </div>
 
   <div id="timePanel" hidden>
@@ -55,11 +60,12 @@
     <details class="legend">
       <summary>Map key</summary>
       <ul>
-        <li><i class="sw" style="background:#9ecae1"></i><i class="sw" style="background:#4292c6"></i><i class="sw" style="background:#08306b"></i> Paid / shared bays: Low · Medium · High tariff</li>
-        <li><i class="sw" style="background:#f08a24"></i> Permit holders only</li>
-        <li><i class="sw" style="background:#3fa66b"></i> Free limited waiting</li>
-        <li><i class="ln" style="background:#f2c200"></i> Single yellow (dashed)</li>
-        <li><i class="ln" style="background:#c98a00"></i> Double yellow</li>
+        <li><i class="sw" style="background:#1b9e77"></i><i class="sw" style="background:#f2a900"></i><i class="sw" style="background:#c0392b"></i> Paid and shared bays by tariff: Low, Medium, High (<i class="sw" style="background:#7b4fc9"></i> summer high / winter low)</li>
+        <li>Switch other kinds on with the chips above:</li>
+        <li><i class="sw" style="background:#7b4fc9"></i> Permit holders only</li>
+        <li><i class="sw" style="background:#2f7fd1"></i> Free limited waiting</li>
+        <li><i class="ln" style="background:#e0b000"></i> Single yellow (dashed)</li>
+        <li><i class="ln" style="background:#b8860b"></i> Double yellow</li>
         <li><i class="ln" style="background:#c1121f"></i> Red route</li>
       </ul>
     </details>

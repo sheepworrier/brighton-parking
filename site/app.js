@@ -1,13 +1,26 @@
 // B&H Parking Finder: map, search, time and the "nearby options" list. No backend, no accounts.
-import { evaluate, describeStatus, describeRules, fmtDuration, KIND_LABEL, londonParts, londonWallToInstant, TZ } from './engine.js';
+import { evaluate, describeStatus, describeRules, fmtDuration, fmtTime, fmtRelative, dayHint, KIND_LABEL, londonParts, londonWallToInstant, TZ } from './engine.js';
 import { nearby, metresToLonLat } from './geo.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BRIGHTON = { center: [-0.1372, 50.8225], bbox: [-0.30, 50.78, 0.05, 50.92] };
-const LIST_LAYERS = ['paid', 'shared', 'permit', 'limited', 'sy'];       // used for the nearby list
-const STATUS_ORDER = ['free', 'paid', 'limited', 'permit', 'unknown', 'nopark'];
-const TARIFF_NAME = { L: 'Low', M: 'Medium', H: 'High', HS: 'High (summer) / Low (winter)' };
+const TARIFF_NAME = { L: 'Low', M: 'Medium', H: 'High', HS: 'High summer / low winter' };
+const TARIFF_COLOR = { L: '#1b9e77', M: '#f2a900', H: '#c0392b', HS: '#7b4fc9' };
+const FREE_LATER_HOURS = 12;   // "free from 20:00" is worth showing if it happens within this many hours
+
+// Categories the user can switch on for the map. 'pay' (paid + shared bays, drawn the same) is on by default.
+const CATS = {
+  pay:     { label: 'Paid & shared',        sources: ['shared', 'paid'] },
+  permit:  { label: 'Permit bays',          sources: ['permit'] },
+  sy:      { label: 'Single yellow',        sources: ['sy'] },
+  limited: { label: 'Free limited waiting', sources: ['limited'] },
+  dy:      { label: 'Double yellow',        sources: ['dy'] },
+  red:     { label: 'Red routes',           sources: ['red'] },
+};
+const KIND_CAT = { paid: 'pay', shared: 'pay', permit: 'permit', sy: 'sy', limited: 'limited', dy: 'dy', red: 'red' };
+const INSIGHT_CATS = ['permit', 'sy', 'limited'];                 // categories we mine for free options
+const LIST_SOURCES = ['paid', 'shared', 'permit', 'limited', 'sy'];
 
 const state = {
   rulesets: null,
@@ -15,12 +28,10 @@ const state = {
   loaded: {},               // key -> FeatureCollection
   when: null,               // Date | null (null = now)
   origin: null,             // {lat, lon, label}
-  filters: { free: true, paid: true, limited: true, permit: true, unknown: true, nopark: false },
-  clusters: [],
-  seq: 0,
+  cats: { pay: true, permit: false, sy: false, limited: false, dy: false, red: false },
   limit: 30,
+  seq: 0,
 };
-
 const nowOrWhen = () => state.when || new Date();
 
 // ---------- data ----------
@@ -45,12 +56,28 @@ const map = new maplibregl.Map({
   attributionControl: { compact: true },
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-const marker = new maplibregl.Marker({ color: '#c1121f', draggable: true });
-marker.on('dragend', () => { const l = marker.getLngLat(); setOrigin({ lat: l.lat, lon: l.lng, label: 'Dropped pin' }, { move: false }); });
+const marker = new maplibregl.Marker({ color: '#14305a', draggable: true });
+marker.on('dragend', () => { const l = marker.getLngLat(); setOrigin({ lat: l.lat, lon: l.lng, label: 'dropped pin' }, { move: false }); });
 
-const tariffColor = ['match', ['get', 't'], 'L', '#9ecae1', 'M', '#4292c6', 'H', '#08306b', 'HS', '#3182bd', '#4292c6'];
-const widen = (a, b) => ['interpolate', ['linear'], ['zoom'], 14, a, 19, b];
-const BAY_LAYERS = ['paid-fill', 'shared-fill', 'permit-fill', 'limited-fill', 'sy-line', 'dy-line', 'red-line'];
+const tariffColor = ['match', ['get', 't'], 'L', TARIFF_COLOR.L, 'M', TARIFF_COLOR.M, 'H', TARIFF_COLOR.H, 'HS', TARIFF_COLOR.HS, '#8a94a0'];
+const zoomW = (a, b, c) => ['interpolate', ['linear'], ['zoom'], 13.5, a, 16.5, b, 19, c];
+
+// Stack order, bottom to top. Layers are added lazily when their category is first switched on.
+const LAYER_SPECS = [
+  { id: 'dy-line', cat: 'dy', source: 'dy', type: 'line', minzoom: 15, paint: { 'line-color': '#b8860b', 'line-width': zoomW(0.8, 1.6, 3), 'line-opacity': 0.8 } },
+  { id: 'red-line', cat: 'red', source: 'red', type: 'line', minzoom: 13, paint: { 'line-color': '#c1121f', 'line-width': zoomW(1.5, 3, 6) } },
+  { id: 'permit-fill', cat: 'permit', source: 'permit', type: 'fill', minzoom: 13.5, paint: { 'fill-color': '#7b4fc9', 'fill-opacity': 0.7 } },
+  { id: 'permit-line', cat: 'permit', source: 'permit', type: 'line', minzoom: 13.5, paint: { 'line-color': '#7b4fc9', 'line-width': zoomW(1.6, 2.4, 3) } },
+  { id: 'limited-fill', cat: 'limited', source: 'limited', type: 'fill', minzoom: 13.5, paint: { 'fill-color': '#2f7fd1', 'fill-opacity': 0.7 } },
+  { id: 'limited-line', cat: 'limited', source: 'limited', type: 'line', minzoom: 13.5, paint: { 'line-color': '#2f7fd1', 'line-width': zoomW(1.6, 2.4, 3) } },
+  // paid and shared bays look identical; colour is the tariff
+  { id: 'shared-fill', cat: 'pay', source: 'shared', type: 'fill', minzoom: 13.5, paint: { 'fill-color': tariffColor, 'fill-opacity': 0.95 } },
+  { id: 'shared-line', cat: 'pay', source: 'shared', type: 'line', minzoom: 13.5, paint: { 'line-color': tariffColor, 'line-width': zoomW(2.2, 3.4, 4.5) } },
+  { id: 'paid-fill', cat: 'pay', source: 'paid', type: 'fill', minzoom: 13.5, paint: { 'fill-color': tariffColor, 'fill-opacity': 0.95 } },
+  { id: 'paid-line', cat: 'pay', source: 'paid', type: 'line', minzoom: 13.5, paint: { 'line-color': tariffColor, 'line-width': zoomW(2.2, 3.4, 4.5) } },
+  { id: 'sy-line', cat: 'sy', source: 'sy', type: 'line', minzoom: 14, paint: { 'line-color': '#e0b000', 'line-width': zoomW(2, 3.5, 5), 'line-dasharray': [2, 1] } },
+];
+const mapReady = new Promise((res) => map.on('load', res));
 
 function addSource(key) {
   if (map.getSource(key)) return;
@@ -58,64 +85,72 @@ function addSource(key) {
   loadData(key).then((g) => map.getSource(key)?.setData(g)).catch((e) => console.error(e));
 }
 
+/** Make sure the layers for a category exist and are shown or hidden. */
+async function applyCat(cat) {
+  await mapReady;
+  const on = state.cats[cat];
+  if (on) {
+    LAYER_SPECS.forEach((spec, i) => {
+      if (spec.cat !== cat || map.getLayer(spec.id)) return;
+      addSource(spec.source);
+      const before = LAYER_SPECS.slice(i + 1).find((s) => map.getLayer(s.id))?.id ?? 'hl-glow';
+      const { id, source, type, minzoom, paint } = spec;
+      map.addLayer({ id, source, type, minzoom, paint, ...(type === 'line' ? { layout: { 'line-join': 'round' } } : {}) }, before);
+    });
+  }
+  for (const spec of LAYER_SPECS) if (spec.cat === cat && map.getLayer(spec.id)) map.setLayoutProperty(spec.id, 'visibility', on ? 'visible' : 'none');
+  const chip = document.querySelector(`.chip.cat[data-cat="${cat}"]`);
+  chip?.classList.toggle('on', on);
+  chip?.setAttribute('aria-pressed', String(on));
+  document.querySelectorAll(`.cathead[data-cat="${cat}"] .cb`).forEach((n) => (n.textContent = on ? 'Hide on map' : 'Show all on map'));
+}
+function setCat(cat, on) { state.cats[cat] = on; return applyCat(cat); }
+
 map.on('load', () => {
-  for (const k of ['dy', 'red', 'permit', 'limited', 'shared', 'paid', 'sy']) addSource(k);
   map.addSource('hl', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-  const L = (def) => map.addLayer(def);
-  L({ id: 'dy-line', type: 'line', source: 'dy', minzoom: 15, paint: { 'line-color': '#d9a400', 'line-width': widen(0.8, 2.6), 'line-opacity': 0.55 } });
-  L({ id: 'red-line', type: 'line', source: 'red', minzoom: 13, paint: { 'line-color': '#c1121f', 'line-width': widen(1.5, 5) } });
-  L({ id: 'permit-fill', type: 'fill', source: 'permit', minzoom: 13.5, paint: { 'fill-color': '#f08a24', 'fill-opacity': 0.75 } });
-  L({ id: 'permit-line', type: 'line', source: 'permit', minzoom: 13.5, paint: { 'line-color': '#b45f00', 'line-width': widen(1.2, 1.6) } });
-  L({ id: 'limited-fill', type: 'fill', source: 'limited', minzoom: 13.5, paint: { 'fill-color': '#3fa66b', 'fill-opacity': 0.8 } });
-  L({ id: 'limited-line', type: 'line', source: 'limited', minzoom: 13.5, paint: { 'line-color': '#1f6f46', 'line-width': widen(1.2, 1.6) } });
-  L({ id: 'shared-fill', type: 'fill', source: 'shared', minzoom: 13.5, paint: { 'fill-color': tariffColor, 'fill-opacity': 0.85 } });
-  L({ id: 'shared-line', type: 'line', source: 'shared', minzoom: 13.5, paint: { 'line-color': '#e8710a', 'line-width': widen(1.4, 2.2) } });
-  L({ id: 'paid-fill', type: 'fill', source: 'paid', minzoom: 13.5, paint: { 'fill-color': tariffColor, 'fill-opacity': 0.9 } });
-  L({ id: 'paid-line', type: 'line', source: 'paid', minzoom: 13.5, paint: { 'line-color': '#0b2a57', 'line-width': widen(1.2, 1.8) } });
-  L({ id: 'sy-line', type: 'line', source: 'sy', minzoom: 14, paint: { 'line-color': '#f2c200', 'line-width': widen(1.8, 4.5), 'line-dasharray': [2, 1] } });
-  L({ id: 'hl-glow', type: 'line', source: 'hl', paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': 0.9 } });
-  L({ id: 'hl-line', type: 'line', source: 'hl', paint: { 'line-color': '#c1121f', 'line-width': 3.5 } });
+  map.addLayer({ id: 'hl-glow', type: 'line', source: 'hl', paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-opacity': 0.95 } });
+  map.addLayer({ id: 'hl-line', type: 'line', source: 'hl', paint: { 'line-color': '#14305a', 'line-width': 4 } });
+  for (const c of Object.keys(CATS)) applyCat(c);
 });
 
 map.on('click', (e) => {
-  if (!map.getLayer('paid-fill')) return;
   const pad = 9;
-  const layers = BAY_LAYERS.filter((l) => map.getLayer(l));
+  const layers = LAYER_SPECS.map((s) => s.id).filter((id) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
+  if (!layers.length) return;
   const hits = map.queryRenderedFeatures([[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]], { layers });
   if (!hits.length) return;
-  // prefer the most specific (small bays) over lines
   const order = ['paid', 'shared', 'limited', 'permit', 'sy', 'red', 'dy'];
   hits.sort((a, b) => order.indexOf(a.properties.k) - order.indexOf(b.properties.k));
   showPopup(hits[0].properties, e.lngLat);
 });
-for (const l of BAY_LAYERS) {
-  map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
-  map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
-}
 
 // ---------- status helpers ----------
 function evalProps(p, when = nowOrWhen()) {
   const ev = evaluate({ k: p.k, r: p.r }, state.rulesets, when);
-  return { ev, text: describeStatus(p.k, ev, when) };
+  return { ev, text: describeStatus(p.k, ev, when, { rel: true }) };
 }
 
-function detailLines(p) {
-  const out = [];
-  if (p.t) out.push(['Tariff', TARIFF_NAME[p.t]]);
-  if (p.ms != null) out.push(['Max stay', fmtDuration(p.ms)]);
-  if (p.nr != null) out.push(['No return', `within ${fmtDuration(p.nr)}`]);
-  return out;
+/** Status line for a free-option row. Limited waiting is free but time-limited, so say so. */
+function optionText(p, ev, when) {
+  if (p.k === 'limited') {
+    const lim = [p.ms != null ? `max ${fmtDuration(p.ms)}` : null, p.nr != null ? `no return ${fmtDuration(p.nr)}` : null].filter(Boolean).join(', ');
+    if (ev.status === 'limited') return `Free${lim ? `, ${lim}` : ''}${ev.next ? `, until ${fmtTime(ev.next.at)}${dayHint(ev.next.at, when)}, then no limit` : ''}`;
+    return `Free, no time limit now${ev.next ? `; limit starts ${fmtTime(ev.next.at)}${dayHint(ev.next.at, when)}` : ''}${lim ? ` (${lim})` : ''}`;
+  }
+  return describeStatus(p.k, ev, when, { rel: true });
 }
 
 async function showPopup(p, lngLat) {
   await rulesReady;
-  const { ev, text } = evalProps(p);
+  const { text } = evalProps(p);
   const rows = [];
   if (p.z) rows.push(['Zone', p.z]);
-  rows.push(...detailLines(p));
+  if (p.t) rows.push(['Tariff', TARIFF_NAME[p.t]]);
+  if (p.ms != null) rows.push(['Max stay', fmtDuration(p.ms)]);
+  if (p.nr != null) rows.push(['No return', `within ${fmtDuration(p.nr)}`]);
   rows.push(['Restricted', p.r >= 0 ? describeRules(state.rulesets[p.r]) : 'Hours unknown']);
   if (p.p) rows.push(['Pay by phone', p.p]);
-  const html = `<h3>${esc(KIND_LABEL[p.k] || p.k)}</h3>
+  const html = `<h3>${esc(p.k === 'shared' ? 'Paid bay (shared with permit holders)' : KIND_LABEL[p.k] || p.k)}</h3>
     <div class="st">${esc(text)}</div>
     <dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     <div class="warn">Check the signs: suspensions and temporary orders aren't in the data.</div>`;
@@ -125,78 +160,137 @@ async function showPopup(p, lngLat) {
 }
 
 // ---------- nearby list ----------
-const clusterKey = (f) => { const p = f.properties; return [p.k, p.z, p.r, p.t, p.ms, p.nr].join('|'); };
+const clusterKey = (f) => { const p = f.properties; return [KIND_CAT[p.k] === 'pay' ? 'pay' : p.k, p.z, p.r, p.t, p.ms, p.nr].join('|'); };
+const clearList = () => $('#results').querySelectorAll('.row, .note, .count, .pick, .hint, .sect').forEach((n) => n.remove());
+const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
 
 async function refresh() {
   const seq = ++state.seq;
-  const box = $('#results');
   if (!state.origin) return;
-  box.querySelectorAll('.row, .note, .count, .pick, .hint').forEach((n) => n.remove());
-  const loading = document.createElement('p'); loading.className = 'note'; loading.textContent = 'Loading bays…';
-  box.prepend(loading);
+  clearList();
+  $('#results').prepend(el('p', 'note', 'Loading bays…'));
   await rulesReady;
-  await Promise.all(LIST_LAYERS.map(loadData));
+  await Promise.all(LIST_SOURCES.map(loadData));
   if (seq !== state.seq) return;
-  loading.remove();
+  clearList();
 
   const when = nowOrWhen();
-  const feats = LIST_LAYERS.flatMap((k) => state.loaded[k].features);
-  let radius = 600;
-  let build = () => nearby(feats, state.origin, radius, clusterKey, 50).map((c) => {
+  const featsOf = (cat) => CATS[cat].sources.flatMap((k) => state.loaded[k]?.features ?? []);
+  const evalCluster = (c) => {
     const p = c.items[0].f.properties;
-    const { ev, text } = evalProps(p, when);
-    return { c, p, ev, text };
+    return { c, p, ev: evaluate({ k: p.k, r: p.r }, state.rulesets, when) };
+  };
+  const build = (radius) => ({
+    radius,
+    pay: nearby(featsOf('pay'), state.origin, radius, clusterKey, 50).map(evalCluster),
+    ...Object.fromEntries(INSIGHT_CATS.map((c) => [c, nearby(featsOf(c), state.origin, radius, clusterKey, 50).map(evalCluster)])),
   });
-  let rows = build();
-  const visible = () => rows.filter((r) => state.filters[r.ev.status]);
-  if (visible().length < 4) { radius = 1000; rows = build(); }
-  const shown = visible().sort((a, b) => a.c.d - b.c.d);
-  state.clusters = shown;
+  let res = build(600);
+  if (res.pay.length < 4) res = build(1000);
 
-  const head = document.createElement('p');
-  head.className = 'count';
-  const whenTxt = state.when ? new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(when) : 'now';
-  head.textContent = `${shown.length} option${shown.length === 1 ? '' : 's'} within ${radius === 1000 ? '1 km' : '600 m'} of ${state.origin.label}, at ${whenTxt}`;
-  box.prepend(head);
-
-  const frag = document.createDocumentFragment();
-  if (!shown.length) {
-    const n = document.createElement('p'); n.className = 'note';
-    n.textContent = 'Nothing matches your filters here. Try turning on more filters, or search elsewhere.';
-    frag.append(n);
+  // chip counts
+  for (const cat of Object.keys(CATS)) {
+    const chip = document.querySelector(`.chip.cat[data-cat="${cat}"]`);
+    if (chip && res[cat]) chip.textContent = `${CATS[cat].label} · ${res[cat].length}`;
   }
-  shown.slice(0, state.limit).forEach((r, i) => frag.append(rowEl(r, i)));
-  if (shown.length > state.limit) {
-    const more = document.createElement('button'); more.type = 'button'; more.className = 'pick';
-    more.textContent = `Show ${Math.min(30, shown.length - state.limit)} more (${shown.length - state.limit} not shown)`;
+
+  const whenTxt = state.when ? chipFmt.format(when) : 'now';
+  const frag = document.createDocumentFragment();
+  frag.append(el('p', 'count', `${res.pay.length} paid &amp; shared option${res.pay.length === 1 ? '' : 's'} within ${res.radius === 1000 ? '1 km' : '600 m'} of ${esc(state.origin.label)}, at ${esc(whenTxt)}`));
+  if (!res.pay.length) frag.append(el('p', 'note', 'No paid or shared bays here. Check the free options below, or search elsewhere.'));
+  res.pay.slice(0, state.limit).forEach((r) => frag.append(rowEl(r, 'pay')));
+  if (res.pay.length > state.limit) {
+    const more = el('button', 'pick', `Show ${Math.min(30, res.pay.length - state.limit)} more (${res.pay.length - state.limit} not shown)`);
+    more.type = 'button';
     more.addEventListener('click', () => { state.limit += 30; refresh(); });
     frag.append(more);
   }
-  head.after(frag);
+
+  // ---- free options insight ----
+  const sections = INSIGHT_CATS.map((cat) => insightSection(cat, res[cat], when)).filter(Boolean);
+  if (sections.length) {
+    frag.append(el('h3', 'sect', 'Possible free options nearby'));
+    frag.append(el('p', 'sect sub', 'Tap a line to see it on the map, or a heading to show them all. Always check the signs.'));
+    sections.forEach((s) => frag.append(s));
+  }
+  $('#results').prepend(frag);
 }
 
-function rowEl({ c, p, ev, text }, i) {
-  const li = document.createElement('div');
-  li.className = `row s-${ev.status}`;
-  li.dataset.i = i; li.tabIndex = 0; li.setAttribute('role', 'button');
+/** One category's worth of insight: heading (toggles the category on the map) plus the nearest free / soon-free rows. */
+function insightSection(cat, rows, when) {
+  if (!rows.length) return null;
+  const horizon = when.getTime() + FREE_LATER_HOURS * 3600000;
+  const isFreeNow = ({ ev }) => (cat === 'limited' ? ev.status !== 'unknown' : ev.status === 'free');
+  const isFreeLater = ({ ev }) => cat !== 'limited' && ev.status !== 'free' && ev.status !== 'unknown' && ev.next?.status === 'free' && ev.next.at.getTime() <= horizon;
+  const usable = rows.filter((r) => isFreeNow(r) || isFreeLater(r));
+  const freeNow = rows.filter(isFreeNow).length;
+  const later = rows.filter(isFreeLater);
+  const unknown = rows.filter(({ ev }) => ev.status === 'unknown').length;
+  const earliest = later.length ? later.reduce((a, b) => (a.ev.next.at < b.ev.next.at ? a : b)).ev.next.at : null;
+  const bits = [];
+  if (freeNow) bits.push(`${freeNow} free${cat === 'limited' ? ' (time-limited)' : ' now'}`);
+  if (earliest) bits.push(`${later.length} free from ${fmtTime(earliest)}${dayHint(earliest, when)} (${fmtRelative(earliest, when) || 'later'})`);
+  if (unknown) bits.push(`${unknown} hours unknown`);
+  if (!bits.length) bits.push(`none free in the next ${FREE_LATER_HOURS} hours`);
+
+  const sect = el('div', 'sect cat');
+  const on = state.cats[cat];
+  const head = el('button', 'cathead', `<span class="ct">${esc(CATS[cat].label)} <small>${rows.length} nearby</small></span><span class="cs">${esc(bits.join(' · '))}</span><span class="cb">${on ? 'Hide on map' : 'Show all on map'}</span>`);
+  head.type = 'button'; head.dataset.cat = cat;
+  head.addEventListener('click', async () => {
+    const next = !state.cats[cat];
+    await setCat(cat, next);
+    if (next) { setSheet('peek'); fitTo(rows.flatMap((r) => r.c.items.map((i) => i.f))); }
+  });
+  sect.append(head);
+  usable.sort((a, b) => a.c.d - b.c.d).slice(0, 3).forEach((r) => sect.append(rowEl(r, 'opt')));
+  if (usable.length > 3) sect.append(el('p', 'note small', `${usable.length - 3} more. Tap the heading to see them all on the map.`));
+  return sect;
+}
+
+function rowEl({ c, p, ev }, mode) {
+  const li = el('div', `row ${mode === 'pay' ? 'pay' : `opt c-${KIND_CAT[p.k]} s-${ev.status}`}`);
+  li.tabIndex = 0; li.setAttribute('role', 'button');
   const metres = c.d * 1.25; // street-grid fudge
   const dist = metres >= 1000 ? `~${(metres / 1000).toFixed(1)} km` : `~${Math.max(10, Math.round(metres / 10) * 10)} m`;
-  let title = KIND_LABEL[p.k] || p.k;
-  if (p.z) title = `${title} · Zone ${p.z}`;
+  const when = nowOrWhen();
+  let title, dotStyle = '';
+  if (mode === 'pay') {
+    title = p.t ? `${TARIFF_NAME[p.t]} tariff` : 'Paid bay';
+    dotStyle = ` style="background:${TARIFF_COLOR[p.t] || '#8a94a0'}"`;
+  } else {
+    title = KIND_LABEL[p.k] || p.k;
+  }
+  if (p.z) title += ` · Zone ${p.z}`;
+  const text = mode === 'pay' ? describeStatus(p.k, ev, when, { rel: true }) : optionText(p, ev, when);
   const meta = [];
   if (p.r >= 0) meta.push(describeRules(state.rulesets[p.r]));
-  const t = p.t ? `${TARIFF_NAME[p.t]} tariff` : null; if (t) meta.push(t);
-  if (p.ms != null) meta.push(`max ${fmtDuration(p.ms)}`);
-  if (p.nr != null) meta.push(`no return ${fmtDuration(p.nr)}`);
+  if (mode === 'pay') {
+    if (p.ms != null) meta.push(`max ${fmtDuration(p.ms)}`);
+    if (p.nr != null) meta.push(`no return ${fmtDuration(p.nr)}`);
+  }
   if (c.items.length > 1) meta.push(`${c.items.length} bays`);
-  li.innerHTML = `<span class="dot"></span><div><div class="title">${esc(title)}</div><div class="status">${esc(text)}</div><div class="meta">${esc(meta.join(' · '))}</div></div><div class="dist">${esc(dist)}</div>`;
+  li.innerHTML = `<span class="dot"${dotStyle}></span><div><div class="title">${esc(title)}</div><div class="status">${esc(text)}</div><div class="meta">${esc(meta.join(' · '))}</div></div><div class="dist">${esc(dist)}</div>`;
   const go = () => focusCluster(c);
   li.addEventListener('click', go);
   li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   return li;
 }
 
-function focusCluster(c) {
+function boundsOf(features) {
+  const b = new maplibregl.LngLatBounds();
+  const walk = (c) => (typeof c[0] === 'number' ? b.extend(c) : c.forEach(walk));
+  features.forEach((f) => walk(f.geometry.coordinates));
+  return b;
+}
+function fitTo(features) {
+  if (!features.length) return;
+  map.fitBounds(boundsOf(features), { padding: { top: 70, left: 30, right: 30, bottom: sheetPx() + 10 }, maxZoom: 17.5, duration: 700 });
+}
+
+async function focusCluster(c) {
+  const cat = KIND_CAT[c.items[0].f.properties.k];
+  if (!state.cats[cat]) await setCat(cat, true);
   map.getSource('hl')?.setData({ type: 'FeatureCollection', features: c.items.map((x) => x.f) });
   const [lon, lat] = metresToLonLat(state.origin, c.nx, c.ny);
   setSheet('peek');
@@ -220,10 +314,8 @@ const POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 const inBrighton = (lat, lon) => lon >= BRIGHTON.bbox[0] && lat >= BRIGHTON.bbox[1] && lon <= BRIGHTON.bbox[2] && lat <= BRIGHTON.bbox[3];
 
 function message(text) {
-  const box = $('#results');
-  box.querySelectorAll('.row, .note, .count, .pick, .hint').forEach((n) => n.remove());
-  const p = document.createElement('p'); p.className = 'note'; p.textContent = text;
-  box.prepend(p);
+  clearList();
+  $('#results').prepend(el('p', 'note', esc(text)));
   if ($('#sheet').dataset.state === 'peek') setSheet('half');
 }
 
@@ -257,16 +349,15 @@ $('#searchForm').addEventListener('submit', async (e) => {
       if (!inBrighton(results[0].lat, results[0].lon)) return message(`"${q}" is outside Brighton & Hove.`);
       return setOrigin(results[0]);
     }
-    const box = $('#results');
-    box.querySelectorAll('.row, .note, .count, .pick, .hint').forEach((n) => n.remove());
+    clearList();
     const frag = document.createDocumentFragment();
-    const n = document.createElement('p'); n.className = 'count'; n.textContent = 'Which one?'; frag.append(n);
+    frag.append(el('p', 'count', 'Which one?'));
     for (const r of results) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'pick'; b.textContent = r.label;
+      const b = el('button', 'pick', esc(r.label)); b.type = 'button';
       b.addEventListener('click', () => setOrigin(r));
       frag.append(b);
     }
-    box.prepend(frag);
+    $('#results').prepend(frag);
     setSheet('half');
   } catch (err) {
     console.error(err);
@@ -310,14 +401,10 @@ $('#dt').addEventListener('change', (e) => {
 setInterval(() => { if (!state.when && state.origin && !document.hidden) refresh(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !state.when && state.origin) refresh(); });
 
-// ---------- filters ----------
+// ---------- category chips (what the map shows) ----------
 $('#chips').addEventListener('click', (e) => {
-  const b = e.target.closest('.chip.f');
-  if (!b) return;
-  const f = b.dataset.f;
-  state.filters[f] = !state.filters[f];
-  b.classList.toggle('on', state.filters[f]);
-  if (state.origin) refresh();
+  const b = e.target.closest('.chip.cat');
+  if (b) setCat(b.dataset.cat, !state.cats[b.dataset.cat]);
 });
 
 // ---------- bottom sheet ----------
@@ -346,4 +433,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 // test hook for automation (harmless in production)
-window.__bhpf = { state, setOrigin, setWhen, refresh, map };
+window.__bhpf = { state, setOrigin, setWhen, refresh, map, setCat };

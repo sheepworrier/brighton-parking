@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { londonParts, londonWallToInstant, isRestricted, evaluate, describeStatus, describeRules, fmtTime } from '../site/engine.js';
+import { londonParts, londonWallToInstant, isRestricted, evaluate, describeStatus, describeRules, fmtTime, fmtRelative } from '../site/engine.js';
 
 const h = (x, m = 0) => x * 60 + m;
 const ALL = 127, MONFRI = 31;
@@ -134,4 +134,15 @@ test('fmtTime is London time', () => {
 
 test('isRestricted exported for UI use', () => {
   assert.equal(isRestricted(RS[0], { dow: 2, min: h(10) }), true);
+});
+
+test('fmtRelative and describeStatus with rel', () => {
+  const now = D('2026-11-10T14:40:00Z');
+  assert.equal(fmtRelative(D('2026-11-10T14:55:00Z'), now), 'in 15 min');
+  assert.equal(fmtRelative(D('2026-11-10T20:00:00Z'), now), 'in 5 h 20 m');
+  assert.equal(fmtRelative(D('2026-11-10T17:40:00Z'), now), 'in 3 h');
+  assert.equal(fmtRelative(D('2026-11-12T14:40:00Z'), now), '');
+  const e = evaluate({ k: 'permit', r: 0 }, RS, now);
+  assert.equal(describeStatus('permit', e, now, { rel: true }), 'Permit holders only now, free from 20:00 (in 5 h 20 m)');
+  assert.equal(describeStatus('permit', e, now), 'Permit holders only now, free from 20:00');
 });

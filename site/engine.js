@@ -109,6 +109,15 @@ export function dayHint(at, now) {
   return ' ' + DOW_NAMES[a.dow - 1];
 }
 
+/** "in 25 min", "in 2 h 40 m"; '' when 24 h or more away. */
+export function fmtRelative(at, now) {
+  const m = Math.round((at - now) / 60000);
+  if (m < 0 || m >= 1440) return '';
+  if (m < 60) return `in ${Math.max(m, 1)} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return `in ${h} h${r ? ` ${r} m` : ''}`;
+}
+
 export function fmtDuration(min) {
   if (min == null) return null;
   if (min < 60) return `${min} min`;
@@ -120,16 +129,16 @@ const START_VERB = { paid: 'paid parking starts', shared: 'paid parking starts',
 const NOW_LABEL = { paid: 'Paid now', permit: 'Permit holders only now', limited: 'Limited waiting now', nopark: 'No parking now' };
 
 /** Short human status line, e.g. "Free now, restriction starts 09:00" / "Permit holders only now, free from 20:00". */
-export function describeStatus(kind, ev, now) {
+export function describeStatus(kind, ev, now, { rel = false } = {}) {
   if (ev.status === 'unknown') return 'Hours unknown. Check the sign.';
   if (kind === 'dy') return 'No parking at any time';
   if (kind === 'red') return 'No stopping (red route), at any time';
   if (ev.status === 'free') {
     if (!ev.next) return 'Free';
-    return `Free now, ${START_VERB[kind] || 'restriction starts'} ${fmtTime(ev.next.at)}${dayHint(ev.next.at, now)}`;
+    return `Free now, ${START_VERB[kind] || 'restriction starts'} ${fmtTime(ev.next.at)}${dayHint(ev.next.at, now)}${rel && fmtRelative(ev.next.at, now) ? ` (${fmtRelative(ev.next.at, now)})` : ''}`;
   }
   const label = NOW_LABEL[ev.status] || 'Restricted now';
-  return ev.next ? `${label}, free from ${fmtTime(ev.next.at)}${dayHint(ev.next.at, now)}` : `${label} at any time`;
+  return ev.next ? `${label}, free from ${fmtTime(ev.next.at)}${dayHint(ev.next.at, now)}${rel && fmtRelative(ev.next.at, now) ? ` (${fmtRelative(ev.next.at, now)})` : ''}` : `${label} at any time`;
 }
 
 function maskLabel(mask) {
