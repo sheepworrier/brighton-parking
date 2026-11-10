@@ -1,9 +1,9 @@
 // Minimal service worker: app shell is network-first (offline fallback), data and libraries are stale-while-revalidate.
 // Bump VERSION when the shell changes so old caches are dropped.
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `bhpf-shell-${VERSION}`;
 const RUNTIME = `bhpf-runtime-${VERSION}`;
-const SHELL_FILES = ['./', 'index.html', 'ui.css', 'app.js', 'engine.js', 'geo.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
+const SHELL_FILES = ['./', 'index.html', 'ui.css', 'app.js', 'engine.js', 'geo.js', 'share.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));

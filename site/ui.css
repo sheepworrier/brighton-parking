@@ -32,8 +32,8 @@ html, body { margin: 0; height: 100%; font: 15px/1.35 system-ui, -apple-system, 
 
 #searchForm { display: flex; gap: 8px; padding: 0 12px; }
 #q { flex: 1; min-width: 0; height: 46px; border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; font-size: 16px; background: var(--bg); color: var(--fg); }
-#locate, #go { height: 46px; border: 0; border-radius: 12px; font-size: 15px; cursor: pointer; }
-#locate { width: 46px; background: var(--chip); color: var(--fg); display: grid; place-items: center; }
+#locate, #share, #go { height: 46px; border: 0; border-radius: 12px; font-size: 15px; cursor: pointer; }
+#locate, #share { width: 46px; background: var(--chip); color: var(--fg); display: grid; place-items: center; }
 #go { padding: 0 16px; background: var(--navy); color: #fff; font-weight: 600; }
 
 #chips { display: flex; gap: 8px; padding: 10px 12px; overflow-x: auto; scrollbar-width: none; }
@@ -106,3 +106,6 @@ html, body { margin: 0; height: 100%; font: 15px/1.35 system-ui, -apple-system, 
 .row.opt .status { color: var(--c-permit); }
 .row.opt.c-limited .status { color: var(--c-limited); } .row.opt.c-sy .status { color: var(--c-sy); }
 .row.opt.s-free .status { color: var(--free); }
+
+#toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 190px); transform: translateX(-50%); z-index: 9; padding: 10px 16px; border-radius: 10px; background: #14305a; color: #fff; font-size: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.35); }
+#toast[hidden] { display: none; }

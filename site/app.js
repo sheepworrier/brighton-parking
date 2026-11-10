@@ -1,6 +1,7 @@
 // B&H Parking Finder: map, search, time and the "nearby options" list. No backend, no accounts.
 import { evaluate, describeStatus, describeRules, fmtDuration, fmtTime, fmtRelative, dayHint, KIND_LABEL, londonParts, londonWallToInstant, TZ } from './engine.js';
 import { nearby, metresToLonLat } from './geo.js';
+import { encodeView, decodeView } from './share.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -34,6 +35,23 @@ const state = {
 };
 const nowOrWhen = () => state.when || new Date();
 
+// A shared link carries the whole view in the hash: search, planned time, categories and map position.
+const shared = decodeView(location.hash, new Date(), Object.keys(CATS));
+if (shared.cats) Object.assign(state.cats, shared.cats);
+if (shared.when) state.when = shared.when;
+if (shared.origin) { state.origin = shared.origin; state.q = shared.q || ''; }
+let booted = false;
+let hashTimer = null;
+function writeHash() {
+  if (!booted) return;
+  const c = map.getCenter();
+  const h = encodeView({ q: state.q, origin: state.origin, when: state.when, cats: state.cats, map: { lat: c.lat, lon: c.lng, zoom: map.getZoom() } });
+  // only worth a URL once there is something to share; the bare page stays clean
+  const hasView = state.origin || h.includes('c=') || h.includes('t=');
+  try { history.replaceState(null, '', hasView ? `#${h}` : location.pathname + location.search); } catch { /* sandboxed */ }
+}
+const writeHashSoon = () => { clearTimeout(hashTimer); hashTimer = setTimeout(writeHash, 400); };
+
 // ---------- data ----------
 function loadData(key) {
   if (!state.data[key]) {
@@ -52,12 +70,12 @@ fetch('data/meta.json').then((r) => r.json()).then((m) => {
 const map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/positron',
-  center: BRIGHTON.center, zoom: 13.2, maxBounds: [[-0.45, 50.70], [0.20, 51.0]],
+  center: shared.map ? [shared.map.lon, shared.map.lat] : BRIGHTON.center, zoom: shared.map ? shared.map.zoom : 13.2, maxBounds: [[-0.45, 50.70], [0.20, 51.0]],
   attributionControl: { compact: true },
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 const marker = new maplibregl.Marker({ color: '#14305a', draggable: true });
-marker.on('dragend', () => { const l = marker.getLngLat(); setOrigin({ lat: l.lat, lon: l.lng, label: 'dropped pin' }, { move: false }); });
+marker.on('dragend', () => { state.q = ''; const l = marker.getLngLat(); setOrigin({ lat: l.lat, lon: l.lng, label: 'dropped pin' }, { move: false }); });
 
 const tariffColor = ['match', ['get', 't'], 'L', TARIFF_COLOR.L, 'M', TARIFF_COLOR.M, 'H', TARIFF_COLOR.H, 'HS', TARIFF_COLOR.HS, '#8a94a0'];
 const zoomW = (a, b, c) => ['interpolate', ['linear'], ['zoom'], 13.5, a, 16.5, b, 19, c];
@@ -104,7 +122,7 @@ async function applyCat(cat) {
   chip?.setAttribute('aria-pressed', String(on));
   document.querySelectorAll(`.cathead[data-cat="${cat}"] .cb`).forEach((n) => (n.textContent = on ? 'Hide on map' : 'Show all on map'));
 }
-function setCat(cat, on) { state.cats[cat] = on; return applyCat(cat); }
+function setCat(cat, on) { state.cats[cat] = on; writeHashSoon(); return applyCat(cat); }
 
 map.on('load', () => {
   map.addSource('hl', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -306,6 +324,7 @@ function setOrigin(o, { move = true } = {}) {
   if (move) map.flyTo({ center: [o.lon, o.lat], zoom: 16.5, padding: { bottom: Math.round(window.innerHeight * 0.45) } });
   if ($('#sheet').dataset.state === 'peek') setSheet('half');
   refresh();
+  writeHashSoon();
 }
 
 const cacheGet = (k) => { try { return JSON.parse(localStorage.getItem('bhpf.geo.' + k)); } catch { return null; } };
@@ -341,6 +360,7 @@ $('#searchForm').addEventListener('submit', async (e) => {
   const q = $('#q').value.trim();
   if (!q) return;
   $('#q').blur();
+  state.q = q;
   message('Searching…');
   try {
     const results = await geocode(q);
@@ -370,6 +390,7 @@ $('#locate').addEventListener('click', () => {
   message('Finding you…');
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      state.q = '';
       const o = { lat: pos.coords.latitude, lon: pos.coords.longitude, label: 'your location' };
       if (!inBrighton(o.lat, o.lon)) return message('You seem to be outside Brighton & Hove. Search a postcode instead.');
       setOrigin(o);
@@ -382,7 +403,7 @@ $('#locate').addEventListener('click', () => {
 const chip = $('#timeChip'), panel = $('#timePanel');
 const chipFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 function renderChip() { chip.textContent = state.when ? chipFmt.format(state.when) : 'Now'; }
-function setWhen(d) { state.when = d; renderChip(); panel.hidden = true; chip.setAttribute('aria-expanded', 'false'); if (state.origin) refresh(); }
+function setWhen(d) { state.when = d; writeHashSoon(); renderChip(); panel.hidden = true; chip.setAttribute('aria-expanded', 'false'); if (state.origin) refresh(); }
 chip.addEventListener('click', () => { panel.hidden = !panel.hidden; chip.setAttribute('aria-expanded', String(!panel.hidden)); });
 panel.addEventListener('click', (e) => {
   const p = e.target.closest('button')?.dataset.p;
@@ -426,6 +447,35 @@ grab.addEventListener('pointerup', (e) => {
 });
 grab.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSheet(STATES[(STATES.indexOf(sheet.dataset.state) + 1) % 3]); } });
 $('#q').addEventListener('focus', () => { if (sheet.dataset.state === 'full') setSheet('half'); });
+
+// ---------- sharing ----------
+let toastTimer = null;
+function toast(text) {
+  const t = $('#toast');
+  t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), 2600);
+}
+$('#share').addEventListener('click', async () => {
+  booted = true; clearTimeout(hashTimer); writeHash();
+  const url = location.href;
+  const where = state.origin ? ` near ${state.origin.label}` : '';
+  try {
+    if (navigator.share) { await navigator.share({ title: 'B&H Parking Finder', text: `Parking${where}`, url }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); toast('Link copied'); }
+  catch { toast('Copy the address bar to share this view'); }
+});
+
+// ---------- boot from a shared link ----------
+renderChip();
+if (shared.origin) $('#q').value = shared.q || shared.origin.label;
+mapReady.then(() => {
+  if (shared.origin) setOrigin(shared.origin, { move: !shared.map });
+  booted = true;
+  writeHash();
+});
+map.on('moveend', writeHashSoon);
 
 // ---------- PWA ----------
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
