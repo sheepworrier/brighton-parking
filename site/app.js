@@ -7,6 +7,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BRIGHTON = { center: [-0.1372, 50.8225], bbox: [-0.30, 50.78, 0.05, 50.92] };
 const TARIFF_NAME = { L: 'Low', M: 'Medium', H: 'High', HS: 'High summer / low winter' };
+const PERMIT_COLOR = '#7b4fc9', PERMIT_FREE_COLOR = '#0b5d2a';   // permit bays turn dark green when nobody needs a permit
 const TARIFF_COLOR = { L: '#1b9e77', M: '#f2a900', H: '#c0392b', HS: '#7b4fc9' };
 const FREE_LATER_HOURS = 12;   // "free from 20:00" is worth showing if it happens within this many hours
 
@@ -90,8 +91,8 @@ const zoomW = (a, b, c) => ['interpolate', ['linear'], ['zoom'], 13.5, a, 16.5, 
 const LAYER_SPECS = [
   { id: 'dy-line', cat: 'dy', source: 'dy', type: 'line', minzoom: 15, paint: { 'line-color': '#b8860b', 'line-width': zoomW(0.8, 1.6, 3), 'line-opacity': 0.8 } },
   { id: 'red-line', cat: 'red', source: 'red', type: 'line', minzoom: 13, paint: { 'line-color': '#c1121f', 'line-width': zoomW(1.5, 3, 6) } },
-  { id: 'permit-fill', cat: 'permit', source: 'permit', type: 'fill', minzoom: 13.5, paint: { 'fill-color': '#7b4fc9', 'fill-opacity': 0.7 } },
-  { id: 'permit-line', cat: 'permit', source: 'permit', type: 'line', minzoom: 13.5, paint: { 'line-color': '#7b4fc9', 'line-width': zoomW(1.6, 2.4, 3) } },
+  { id: 'permit-fill', cat: 'permit', source: 'permit', type: 'fill', minzoom: 13.5, paint: { 'fill-color': PERMIT_COLOR, 'fill-opacity': 0.7 } },
+  { id: 'permit-line', cat: 'permit', source: 'permit', type: 'line', minzoom: 13.5, paint: { 'line-color': PERMIT_COLOR, 'line-width': zoomW(1.6, 2.4, 3) } },
   { id: 'limited-fill', cat: 'limited', source: 'limited', type: 'fill', minzoom: 13.5, paint: { 'fill-color': '#2f7fd1', 'fill-opacity': 0.7 } },
   { id: 'limited-line', cat: 'limited', source: 'limited', type: 'line', minzoom: 13.5, paint: { 'line-color': '#2f7fd1', 'line-width': zoomW(1.6, 2.4, 3) } },
   // paid and shared bays look identical; colour is the tariff
@@ -149,6 +150,7 @@ async function applyCat(cat) {
       map.addLayer({ id, source, type, minzoom, paint, ...(layout ? { layout } : type === 'line' ? { layout: { 'line-join': 'round' } } : {}) }, before);
     });
   }
+  if (cat === 'permit' && on) updatePermitPaint();
   for (const spec of LAYER_SPECS) if (spec.cat === cat && map.getLayer(spec.id)) map.setLayoutProperty(spec.id, 'visibility', on ? 'visible' : 'none');
   const chip = document.querySelector(`.chip.cat[data-cat="${cat}"]`);
   chip?.classList.toggle('on', on);
@@ -156,6 +158,18 @@ async function applyCat(cat) {
   document.querySelectorAll(`.cathead[data-cat="${cat}"] .cb`).forEach((n) => (n.textContent = on ? 'Hide on map' : 'Show all on map'));
 }
 function setCat(cat, on) { state.cats[cat] = on; writeHashSoon(); return applyCat(cat).then(() => { if (cat === 'dy' && on) loadDyTiles(); }); }
+
+/** Permit bays with no restriction at the chosen time are drawn dark green. Colour is by ruleset id, so it's cheap to redo. */
+async function updatePermitPaint() {
+  await rulesReady;
+  if (!map.getLayer('permit-fill')) return;
+  const when = nowOrWhen();
+  const freeIds = state.rulesets.map((_, i) => i).filter((i) => evaluate({ k: 'permit', r: i }, state.rulesets, when).status === 'free');
+  const color = freeIds.length ? ['match', ['get', 'r'], freeIds, PERMIT_FREE_COLOR, PERMIT_COLOR] : PERMIT_COLOR;
+  map.setPaintProperty('permit-fill', 'fill-color', color);
+  map.setPaintProperty('permit-line', 'line-color', color);
+}
+setInterval(() => { if (!state.when && !document.hidden) updatePermitPaint(); }, 60000);
 
 map.on('load', () => {
   map.addSource('hl', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -202,9 +216,13 @@ async function showPopup(p, lngLat) {
   if (p.nr != null) rows.push(['No return', `within ${fmtDuration(p.nr)}`]);
   rows.push(['Restricted', p.r >= 0 ? describeRules(state.rulesets[p.r]) : 'Hours unknown']);
   if (p.p) rows.push(['Pay by phone', p.p]);
+  const dest = `${lngLat.lat.toFixed(6)},${lngLat.lng.toFixed(6)}`;
+  const google = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
+  const apple = `https://maps.apple.com/?daddr=${dest}&dirflg=d`;
   const html = `<h3>${esc(p.k === 'shared' ? 'Paid bay (shared with permit holders)' : KIND_LABEL[p.k] || p.k)}</h3>
     <div class="st">${esc(text)}</div>
     <dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    <div class="nav">Directions: <a href="${google}" target="_blank" rel="noopener">Google Maps</a> · <a href="${apple}" target="_blank" rel="noopener">Apple Maps</a></div>
     <div class="warn">Check the signs: suspensions and temporary orders aren't in the data.</div>`;
   setSheet('peek');
   map.easeTo({ center: lngLat, padding: { bottom: sheetPx() } });
@@ -442,7 +460,7 @@ $('#locate').addEventListener('click', () => {
 const chip = $('#timeChip'), panel = $('#timePanel');
 const chipFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 function renderChip() { chip.textContent = state.when ? chipFmt.format(state.when) : 'Now'; }
-function setWhen(d) { state.when = d; writeHashSoon(); renderChip(); panel.hidden = true; chip.setAttribute('aria-expanded', 'false'); if (state.origin) refresh(); }
+function setWhen(d) { state.when = d; updatePermitPaint(); writeHashSoon(); renderChip(); panel.hidden = true; chip.setAttribute('aria-expanded', 'false'); if (state.origin) refresh(); }
 chip.addEventListener('click', () => { panel.hidden = !panel.hidden; chip.setAttribute('aria-expanded', String(!panel.hidden)); });
 panel.addEventListener('click', (e) => {
   const p = e.target.closest('button')?.dataset.p;
